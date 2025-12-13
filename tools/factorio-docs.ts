@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import os from "node:os";
 
 const BASE = "https://lua-api.factorio.com";
 
@@ -75,7 +74,7 @@ async function resolveChannel(channel: Channel): Promise<string> {
 }
 
 function parseAllVersionsFromIndex(html: string): string[] {
-  const matches = [...html.matchAll(/href="(\d+\.\d+\.\d+)\/?"/g)].map((m) => m[1]);
+  const matches = [...html.matchAll(/href=["'](?:https?:\/\/lua-api\.factorio\.com\/)?\/?(\d+\.\d+\.\d+)\/?["']/g)].map((m) => m[1]);
   const uniq = Array.from(new Set(matches)).filter(isVersion);
   uniq.sort(cmpSemverDesc);
   return uniq;
@@ -105,7 +104,7 @@ async function downloadArchiveZip(version: string, outZipPath: string) {
 async function findDocsRoot(extractedDir: string): Promise<string> {
   async function walk(dir: string, depth: number): Promise<string | null> {
     if (depth < 0) return null;
-    const entries = await (await import("node:fs/promises")).readdir(dir, { withFileTypes: true });
+    const entries = await readdir(dir, { withFileTypes: true });
     for (const e of entries) {
       if (e.isFile() && e.name === "runtime-api.json") return dir;
     }
@@ -117,7 +116,7 @@ async function findDocsRoot(extractedDir: string): Promise<string> {
     return null;
   }
 
-  const found = await walk(extractedDir, 4);
+  const found = await walk(extractedDir, 5);
   if (!found) throw new Error(`Could not find runtime-api.json under ${extractedDir}`);
   return found;
 }
@@ -149,10 +148,13 @@ async function runGenerator(docsRoot: string, repoRoot: string, version: string)
 
 async function generateForVersion(version: string) {
   const repoRoot = path.resolve(import.meta.dir, "..");
-  const tmpBase = await (await import("node:fs/promises")).mkdtemp(path.join(os.tmpdir(), "factorio-api-"));
 
-  const zipPath = path.join(tmpBase, "archive.zip");
-  const extractDir = path.join(tmpBase, "extracted");
+  // Keep all temp work inside the repo (gitignored) for predictable paths and permissions.
+  const workBase = path.join(repoRoot, ".work", "factorio-api", version);
+  const zipPath = path.join(workBase, "archive.zip");
+  const extractDir = path.join(workBase, "extracted");
+
+  await rm(workBase, { recursive: true, force: true });
   await mkdir(extractDir, { recursive: true });
 
   try {
@@ -168,7 +170,7 @@ async function generateForVersion(version: string) {
     const docsRoot = await findDocsRoot(extractDir);
     await runGenerator(docsRoot, repoRoot, version);
   } finally {
-    await rm(tmpBase, { recursive: true, force: true });
+    await rm(workBase, { recursive: true, force: true });
   }
 }
 
@@ -203,7 +205,6 @@ async function cmdGenerateLast5(channel: Channel) {
 
   if (!base) throw new Error(`Could not resolve ${channel} version`);
 
-  // Generate the channel version first, then the remaining newest versions.
   const set = new Set<string>();
   set.add(base);
   for (const v of report.last5) set.add(v);
@@ -223,6 +224,7 @@ async function cmdGenerateAll() {
   for (const v of report.last5) set.add(v);
 
   const list = Array.from(set).sort(cmpSemverDesc);
+  console.log(`Will generate ${list.length} version(s): ${list.join(", ")}`);
   for (const v of list) {
     console.log(`\n== Generating ${v} ==`);
     await generateForVersion(v);
@@ -233,13 +235,7 @@ async function main() {
   const { cmd, flags } = parseArgs(Bun.argv.slice(2));
 
   if (!cmd || cmd === "--help" || cmd === "help") {
-    console.log(`factorio-docs
-
-Commands:
-  versions
-  generate --target <stable|experimental|latest|x.y.z>
-  generate-last5 --channel <stable|experimental|latest>
-`);
+    console.log(`factorio-docs\n\nCommands:\n  versions\n  generate --target <stable|experimental|latest|x.y.z>\n  generate-last5 --channel <stable|experimental|latest>\n  generate-all\n`);
     process.exit(0);
   }
 

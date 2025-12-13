@@ -9,3 +9,6 @@ llm-docs/index.html
 # Common
 .DS_Store
 node_modules/
+
+# Local working directory
+.work/

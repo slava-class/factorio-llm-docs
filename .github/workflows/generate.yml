@@ -51,20 +51,30 @@ jobs:
           bun tools/site-index.ts
 
       - name: Determine version
+        if: steps.resolve.outputs.target != 'all'
         id: version
         env:
           TARGET: ${{ steps.resolve.outputs.target }}
         run: |
           set -euo pipefail
           if [[ "$TARGET" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "version=$TARGET" >> "$GITHUB_OUTPUT"
+            {
+              echo "version<<EOF"
+              echo "$TARGET"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           bun tools/factorio-docs.ts versions > /tmp/versions.json
           VERSION=$(bun -e 'const fs=require("fs"); const r=JSON.parse(fs.readFileSync("/tmp/versions.json","utf8")); const t=process.env.TARGET; console.log(r[t] ?? r.latest);')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          {
+            echo "version<<EOF"
+            echo "$VERSION"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Package version artifacts
+        if: steps.resolve.outputs.target != 'all'
         run: |
           set -euo pipefail
           version="${{ steps.version.outputs.version }}"

@@ -30,8 +30,10 @@ jobs:
       - name: Generate experimental + last5
         run: bun tools/factorio-docs.ts generate-last5 --channel experimental
 
-      - name: Build index
-        run: bun tools/site-index.ts
+      - name: Build site
+        run: |
+          bun tools/build-site.ts
+          bun tools/site-index.ts
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

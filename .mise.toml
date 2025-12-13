@@ -18,4 +18,4 @@ run = "bun tools/factorio-docs.ts generate-last5 --channel ${1:-stable}"
 [tasks.generate-all]
 # Usage: mise run generate-all
 # Generates stable + experimental + newest 5 (deduped), then rebuilds llm-docs/index.html.
-run = "bun tools/factorio-docs.ts generate-all && bun tools/site-index.ts"
+run = "bun tools/factorio-docs.ts generate-all && bun tools/build-site.ts && bun tools/site-index.ts"

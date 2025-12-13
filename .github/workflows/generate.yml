@@ -36,13 +36,18 @@ jobs:
             t="${t#v}"
             echo "target=$t" >> "$GITHUB_OUTPUT"
           else
-            # Manual runs always generate the latest docs.
-            echo "target=latest" >> "$GITHUB_OUTPUT"
+            # Manual runs generate the newest 5 docs.
+            echo "target=all" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Generate
         run: |
-          bun tools/factorio-docs.ts generate --target "${{ steps.resolve.outputs.target }}"
+          if [ "${{ steps.resolve.outputs.target }}" = "all" ]; then
+            bun tools/factorio-docs.ts generate-all
+          else
+            bun tools/factorio-docs.ts generate --target "${{ steps.resolve.outputs.target }}"
+          fi
+          bun tools/build-site.ts
           bun tools/site-index.ts
 
       - name: Determine version

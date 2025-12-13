@@ -54,7 +54,8 @@ function cmpSemverDesc(a: string, b: string) {
 
 async function fetchText(url: string) {
   const res = await fetch(url, { redirect: "follow" });
-  if (!res.ok) throw new Error(`Fetch failed ${res.status} ${res.statusText} for ${url}`);
+  if (!res.ok)
+    throw new Error(`Fetch failed ${res.status} ${res.statusText} for ${url}`);
   return await res.text();
 }
 
@@ -74,7 +75,11 @@ async function resolveChannel(channel: Channel): Promise<string> {
 }
 
 function parseAllVersionsFromIndex(html: string): string[] {
-  const matches = [...html.matchAll(/href=["'](?:https?:\/\/lua-api\.factorio\.com\/)?\/?(\d+\.\d+\.\d+)\/?["']/g)].map((m) => m[1]);
+  const matches = [
+    ...html.matchAll(
+      /href=["'](?:https?:\/\/lua-api\.factorio\.com\/)?\/?(\d+\.\d+\.\d+)\/?["']/g,
+    ),
+  ].map((m) => m[1]);
   const uniq = Array.from(new Set(matches)).filter(isVersion);
   uniq.sort(cmpSemverDesc);
   return uniq;
@@ -97,7 +102,10 @@ async function getVersions(): Promise<VersionsReport> {
 async function downloadArchiveZip(version: string, outZipPath: string) {
   const url = `${BASE}/${version}/static/archive.zip`;
   const res = await fetch(url, { redirect: "follow" });
-  if (!res.ok) throw new Error(`Download failed ${res.status} ${res.statusText} for ${url}`);
+  if (!res.ok)
+    throw new Error(
+      `Download failed ${res.status} ${res.statusText} for ${url}`,
+    );
   await writeFile(outZipPath, Buffer.from(await res.arrayBuffer()));
 }
 
@@ -117,11 +125,16 @@ async function findDocsRoot(extractedDir: string): Promise<string> {
   }
 
   const found = await walk(extractedDir, 5);
-  if (!found) throw new Error(`Could not find runtime-api.json under ${extractedDir}`);
+  if (!found)
+    throw new Error(`Could not find runtime-api.json under ${extractedDir}`);
   return found;
 }
 
-async function runGenerator(docsRoot: string, repoRoot: string, version: string) {
+async function runGenerator(
+  docsRoot: string,
+  repoRoot: string,
+  version: string,
+) {
   const outDirAbs = path.join(repoRoot, "llm-docs");
   const outDirFromDocsRoot = path.relative(docsRoot, outDirAbs) || ".";
   const generator = path.join(repoRoot, "tools", "factorio-api-docs-to-llm.ts");
@@ -165,7 +178,8 @@ async function generateForVersion(version: string) {
       stderr: "inherit",
     });
     const unzipCode = await unzip.exited;
-    if (unzipCode !== 0) throw new Error(`unzip failed with exit code ${unzipCode}`);
+    if (unzipCode !== 0)
+      throw new Error(`unzip failed with exit code ${unzipCode}`);
 
     const docsRoot = await findDocsRoot(extractDir);
     await runGenerator(docsRoot, repoRoot, version);
@@ -191,7 +205,9 @@ async function cmdGenerate(target: string) {
     return;
   }
 
-  throw new Error(`Unknown target: ${target} (expected stable|experimental|latest|x.y.z)`);
+  throw new Error(
+    `Unknown target: ${target} (expected stable|experimental|latest|x.y.z)`,
+  );
 }
 
 async function cmdGenerateLast5(channel: Channel) {
@@ -235,7 +251,9 @@ async function main() {
   const { cmd, flags } = parseArgs(Bun.argv.slice(2));
 
   if (!cmd || cmd === "--help" || cmd === "help") {
-    console.log(`factorio-docs\n\nCommands:\n  versions\n  generate --target <stable|experimental|latest|x.y.z>\n  generate-last5 --channel <stable|experimental|latest>\n  generate-all\n`);
+    console.log(
+      `factorio-docs\n\nCommands:\n  versions\n  generate --target <stable|experimental|latest|x.y.z>\n  generate-last5 --channel <stable|experimental|latest>\n  generate-all\n`,
+    );
     process.exit(0);
   }
 
@@ -252,7 +270,11 @@ async function main() {
 
   if (cmd === "generate-last5") {
     const channel = String(flags.get("channel") ?? "stable") as Channel;
-    if (channel !== "stable" && channel !== "experimental" && channel !== "latest") {
+    if (
+      channel !== "stable" &&
+      channel !== "experimental" &&
+      channel !== "latest"
+    ) {
       throw new Error(`Invalid --channel: ${channel}`);
     }
     await cmdGenerateLast5(channel);

@@ -21,7 +21,10 @@ async function main() {
     });
 
   const items = versions
-    .map((v) => `<li><a href="./${v}/README.md">${v}</a> (<a href="./${v}/SEARCH.md">SEARCH</a>)</li>`)
+    .map(
+      (v) =>
+        `<li><a href="./${v}/README.md">${v}</a> (<a href="./${v}/SEARCH.md">SEARCH</a>)</li>`,
+    )
     .join("\n");
 
   const html = `<!doctype html>

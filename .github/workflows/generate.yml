@@ -1,12 +1,7 @@
 name: generate
 
 on:
-  workflow_dispatch:
-    inputs:
-      target:
-        description: "stable | experimental | latest | x.y.z"
-        required: true
-        default: "latest"
+  workflow_dispatch: {}
   push:
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
@@ -41,7 +36,8 @@ jobs:
             t="${t#v}"
             echo "target=$t" >> "$GITHUB_OUTPUT"
           else
-            echo "target=${{ inputs.target }}" >> "$GITHUB_OUTPUT"
+            # Manual runs always generate the latest docs.
+            echo "target=latest" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Generate

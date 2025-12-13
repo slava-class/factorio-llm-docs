@@ -26,3 +26,14 @@ Generated output:
 - `llm-docs/<version>/*.md` — Markdown sources (also used by agents)
 
 This repo does not commit generated `llm-docs/<version>/` outputs. CI publishes them to GitHub Pages and attaches per-version archives to GitHub Releases.
+
+## Using With AI Agents
+
+GitHub Pages (`llm-docs/index.html` and friends) is primarily for humans.
+
+For AI agents / tooling:
+
+- Prefer `llm-docs/<version>/chunks.jsonl` for RAG ingestion (each line includes `id`, `stage`, `kind`, `name`, `text`, and `relMarkdownPath`).
+- Prefer `llm-docs/<version>/*.md` for “paste into context” or when you want a readable canonical source.
+- Use `llm-docs/<version>/SEARCH.md` as the starting jump list when you don’t know which API surface you need.
+- See `llm-docs/AGENTS.md` for agent-oriented notes and retrieval tips.

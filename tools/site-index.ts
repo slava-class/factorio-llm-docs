@@ -33,19 +33,43 @@ async function main() {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>factorio-llm-docs</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; max-width: 860px; margin: 0 auto; }
-    code { background: #f3f3f3; padding: 2px 6px; border-radius: 6px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; max-width: 980px; margin: 0 auto; line-height: 1.45; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
     a { color: #2563eb; text-decoration: none; }
     a:hover { text-decoration: underline; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1.2fr 0.8fr; } }
+    .card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px 18px; }
+    h1,h2 { margin: 0 0 10px 0; }
+    ul { margin: 8px 0 0 18px; }
+    .muted { color: #4b5563; }
   </style>
 </head>
 <body>
   <h1>factorio-llm-docs</h1>
-  <p>Generated, browsable Factorio API docs for LLMs (HTML + Markdown + chunks).</p>
-  <h2>Versions</h2>
-  <ul>
-${items || "<li>(none)</li>"}
-  </ul>
+  <p class="muted">Generated Factorio API docs for humans (HTML) and agents (Markdown/JSONL).</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Browse (Humans)</h2>
+      <p>Pick a version to browse the docs as HTML:</p>
+      <ul>
+        ${items || "<li>(none)</li>"}
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Use (Agents)</h2>
+      <p>GitHub Pages is for browsing. For AI agents and tooling, prefer the source artifacts:</p>
+      <ul>
+        <li><code>llm-docs/&lt;version&gt;/chunks.jsonl</code> — best for RAG ingestion</li>
+        <li><code>llm-docs/&lt;version&gt;/*.md</code> — readable canonical text</li>
+        <li><code>llm-docs/&lt;version&gt;/SEARCH.md</code> — curated jump list</li>
+        <li><a href="./AGENTS.md">llm-docs/AGENTS.md</a> — agent notes and retrieval tips</li>
+      </ul>
+      <p class="muted">Tip: retrieve narrowly-scoped chunks (methods/properties) first, then pull the linked markdown page for more context.</p>
+    </div>
+  </div>
 </body>
 </html>
 `;

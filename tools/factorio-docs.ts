@@ -1,0 +1,277 @@
+#!/usr/bin/env bun
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
+
+const BASE = "https://lua-api.factorio.com";
+
+type Channel = "stable" | "experimental" | "latest";
+
+type VersionsReport = {
+  stable?: string;
+  experimental?: string;
+  latest?: string;
+  last5: string[];
+  all: string[];
+};
+
+function parseArgs(argv: string[]) {
+  const [cmd, ...rest] = argv;
+  const flags = new Map<string, string | boolean>();
+  const positionals: string[] = [];
+
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i];
+    if (a.startsWith("--")) {
+      const key = a.slice(2);
+      const next = rest[i + 1];
+      if (next != null && !next.startsWith("--")) {
+        flags.set(key, next);
+        i++;
+      } else {
+        flags.set(key, true);
+      }
+      continue;
+    }
+    positionals.push(a);
+  }
+
+  return { cmd, flags, positionals };
+}
+
+function isVersion(s: string) {
+  return /^\d+\.\d+\.\d+$/.test(s);
+}
+
+function cmpSemverDesc(a: string, b: string) {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    const d = (pb[i] ?? 0) - (pa[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+async function fetchText(url: string) {
+  const res = await fetch(url, { redirect: "follow" });
+  if (!res.ok) throw new Error(`Fetch failed ${res.status} ${res.statusText} for ${url}`);
+  return await res.text();
+}
+
+function parseVersionFromHtml(html: string): string | null {
+  const m1 = html.match(/Version<\/span>\s*([0-9]+\.[0-9]+\.[0-9]+)/i);
+  if (m1) return m1[1];
+  const m2 = html.match(/\bVersion\b\s*([0-9]+\.[0-9]+\.[0-9]+)/i);
+  if (m2) return m2[1];
+  return null;
+}
+
+async function resolveChannel(channel: Channel): Promise<string> {
+  const html = await fetchText(`${BASE}/${channel}/`);
+  const v = parseVersionFromHtml(html);
+  if (!v) throw new Error(`Could not parse version from ${BASE}/${channel}/`);
+  return v;
+}
+
+function parseAllVersionsFromIndex(html: string): string[] {
+  const matches = [...html.matchAll(/href="(\d+\.\d+\.\d+)\/?"/g)].map((m) => m[1]);
+  const uniq = Array.from(new Set(matches)).filter(isVersion);
+  uniq.sort(cmpSemverDesc);
+  return uniq;
+}
+
+async function getVersions(): Promise<VersionsReport> {
+  const [stable, experimental, latest] = await Promise.all([
+    resolveChannel("stable").catch(() => undefined),
+    resolveChannel("experimental").catch(() => undefined),
+    resolveChannel("latest").catch(() => undefined),
+  ]);
+
+  const indexHtml = await fetchText(`${BASE}/`);
+  const all = parseAllVersionsFromIndex(indexHtml);
+  const last5 = all.slice(0, 5);
+
+  return { stable, experimental, latest, last5, all };
+}
+
+async function downloadArchiveZip(version: string, outZipPath: string) {
+  const url = `${BASE}/${version}/static/archive.zip`;
+  const res = await fetch(url, { redirect: "follow" });
+  if (!res.ok) throw new Error(`Download failed ${res.status} ${res.statusText} for ${url}`);
+  await writeFile(outZipPath, Buffer.from(await res.arrayBuffer()));
+}
+
+async function findDocsRoot(extractedDir: string): Promise<string> {
+  async function walk(dir: string, depth: number): Promise<string | null> {
+    if (depth < 0) return null;
+    const entries = await (await import("node:fs/promises")).readdir(dir, { withFileTypes: true });
+    for (const e of entries) {
+      if (e.isFile() && e.name === "runtime-api.json") return dir;
+    }
+    for (const e of entries) {
+      if (!e.isDirectory()) continue;
+      const found = await walk(path.join(dir, e.name), depth - 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  const found = await walk(extractedDir, 4);
+  if (!found) throw new Error(`Could not find runtime-api.json under ${extractedDir}`);
+  return found;
+}
+
+async function runGenerator(docsRoot: string, repoRoot: string, version: string) {
+  const outDirAbs = path.join(repoRoot, "llm-docs");
+  const outDirFromDocsRoot = path.relative(docsRoot, outDirAbs) || ".";
+  const generator = path.join(repoRoot, "tools", "factorio-api-docs-to-llm.ts");
+
+  const proc = Bun.spawn(
+    [
+      "bun",
+      generator,
+      "--force",
+      "--out",
+      outDirFromDocsRoot,
+      "--version",
+      version,
+    ],
+    {
+      cwd: docsRoot,
+      stdout: "inherit",
+      stderr: "inherit",
+    },
+  );
+  const code = await proc.exited;
+  if (code !== 0) throw new Error(`Generator failed with exit code ${code}`);
+}
+
+async function generateForVersion(version: string) {
+  const repoRoot = path.resolve(import.meta.dir, "..");
+  const tmpBase = await (await import("node:fs/promises")).mkdtemp(path.join(os.tmpdir(), "factorio-api-"));
+
+  const zipPath = path.join(tmpBase, "archive.zip");
+  const extractDir = path.join(tmpBase, "extracted");
+  await mkdir(extractDir, { recursive: true });
+
+  try {
+    await downloadArchiveZip(version, zipPath);
+
+    const unzip = Bun.spawn(["unzip", "-q", zipPath, "-d", extractDir], {
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    const unzipCode = await unzip.exited;
+    if (unzipCode !== 0) throw new Error(`unzip failed with exit code ${unzipCode}`);
+
+    const docsRoot = await findDocsRoot(extractDir);
+    await runGenerator(docsRoot, repoRoot, version);
+  } finally {
+    await rm(tmpBase, { recursive: true, force: true });
+  }
+}
+
+async function cmdVersions() {
+  const report = await getVersions();
+  console.log(JSON.stringify(report, null, 2));
+}
+
+async function cmdGenerate(target: string) {
+  if (isVersion(target)) {
+    await generateForVersion(target);
+    return;
+  }
+
+  if (target === "stable" || target === "experimental" || target === "latest") {
+    const version = await resolveChannel(target);
+    await generateForVersion(version);
+    return;
+  }
+
+  throw new Error(`Unknown target: ${target} (expected stable|experimental|latest|x.y.z)`);
+}
+
+async function cmdGenerateLast5(channel: Channel) {
+  const report = await getVersions();
+  const base =
+    channel === "stable"
+      ? report.stable
+      : channel === "experimental"
+        ? report.experimental
+        : report.latest;
+
+  if (!base) throw new Error(`Could not resolve ${channel} version`);
+
+  // Generate the channel version first, then the remaining newest versions.
+  const set = new Set<string>();
+  set.add(base);
+  for (const v of report.last5) set.add(v);
+
+  const list = Array.from(set).sort(cmpSemverDesc);
+  for (const v of list) {
+    console.log(`\n== Generating ${v} ==`);
+    await generateForVersion(v);
+  }
+}
+
+async function cmdGenerateAll() {
+  const report = await getVersions();
+  const set = new Set<string>();
+  if (report.stable) set.add(report.stable);
+  if (report.experimental) set.add(report.experimental);
+  for (const v of report.last5) set.add(v);
+
+  const list = Array.from(set).sort(cmpSemverDesc);
+  for (const v of list) {
+    console.log(`\n== Generating ${v} ==`);
+    await generateForVersion(v);
+  }
+}
+
+async function main() {
+  const { cmd, flags } = parseArgs(Bun.argv.slice(2));
+
+  if (!cmd || cmd === "--help" || cmd === "help") {
+    console.log(`factorio-docs
+
+Commands:
+  versions
+  generate --target <stable|experimental|latest|x.y.z>
+  generate-last5 --channel <stable|experimental|latest>
+`);
+    process.exit(0);
+  }
+
+  if (cmd === "versions") {
+    await cmdVersions();
+    return;
+  }
+
+  if (cmd === "generate") {
+    const target = String(flags.get("target") ?? "latest");
+    await cmdGenerate(target);
+    return;
+  }
+
+  if (cmd === "generate-last5") {
+    const channel = String(flags.get("channel") ?? "stable") as Channel;
+    if (channel !== "stable" && channel !== "experimental" && channel !== "latest") {
+      throw new Error(`Invalid --channel: ${channel}`);
+    }
+    await cmdGenerateLast5(channel);
+    return;
+  }
+
+  if (cmd === "generate-all") {
+    await cmdGenerateAll();
+    return;
+  }
+
+  throw new Error(`Unknown command: ${cmd}`);
+}
+
+main().catch((err) => {
+  console.error(err?.stack ?? String(err));
+  process.exit(1);
+});

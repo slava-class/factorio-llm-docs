@@ -1,0 +1,52 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  pages: write
+  id-token: write
+
+jobs:
+  build-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+
+      - name: Generate stable + last5
+        run: bun tools/factorio-docs.ts generate-last5 --channel stable
+
+      - name: Generate experimental + last5
+        run: bun tools/factorio-docs.ts generate-last5 --channel experimental
+
+      - name: Build index
+        run: bun tools/site-index.ts
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: llm-docs
+
+  deploy:
+    needs: build-pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

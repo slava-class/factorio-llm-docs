@@ -1,0 +1,11 @@
+# Generated outputs (keep only repo-level docs)
+llm-docs/*
+!llm-docs/README.md
+!llm-docs/AGENTS.md
+
+# Built site index (published from CI)
+llm-docs/index.html
+
+# Common
+.DS_Store
+node_modules/

@@ -60,13 +60,27 @@ The next steps should primarily improve *how agents access and trust the corpus*
 
 ### 1) Local Search CLI (No LLM Required)
 
-Add a CLI that can query the corpus and return citation-ready hits:
+This repo includes a small CLI (`tools/search.ts`) that can query the corpus and return citation-ready hits:
 
 - `search <query>`: ranked results with snippet + IDs.
 - `get <id>`: return one chunk by exact ID.
 - `open <id|path>`: print Markdown (or open file) for interactive browsing.
-- `related <id>`: nearby chunks (same symbol/page, same class, same prototype, etc.).
 - `versions`: list versions present under `llm-docs/`.
+
+#### `related` (Documented, Not Implemented Yet)
+
+`related <id>` can work cleanly with the current `chunks.jsonl` shape, but it needs a clearly-defined meaning:
+
+- **Same page neighbors (recommended default)**: find the chunk by `id`, then return other chunks with the same `relPath` (optionally ordered by Markdown heading order, and/or grouped by `kind`).
+- **Same symbol family**: for runtime classes/prototypes, return other chunks that share `stage` + `name` (and optionally `kind`), e.g. other `LuaEntity` members.
+
+These both require only the fields you already have today (`id`, `stage`, `name`, optional `member`, plus `relPath`/`anchor`).
+
+If you later want a **cross-reference graph** style `related` (“things this chunk links to” / “things that link to this chunk”), you’ll likely want generator-side metadata to avoid heuristics:
+
+- `order` (a stable, per-page ordering index for each chunk) to return “neighbors” deterministically.
+- A normalized anchor key for matching (e.g. `anchor_slug` as actually used in Markdown links).
+- Optional `links: Array<{relPath, anchor?}>` extracted from Markdown to build a real link graph.
 
 Must-have filters:
 

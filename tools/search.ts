@@ -29,6 +29,9 @@ Options:
   --kind <kinds>        search: comma-separated (class_method,event,...)
   --name <names>        search: comma-separated (LuaEntity,EntityPrototype,...)
   --member <members>    search: comma-separated (clone,set_tiles,...)
+  --open                search: open the top hit (prints markdown/text instead of the hit list)
+  --print-ids           search: print only chunk ids (one per line)
+  --quiet               Suppress non-essential stderr output
   --                    End of flags (treat remaining args as positional)
   -h, --help            Show help
 `);
@@ -37,6 +40,8 @@ Options:
 function parseArgs(argv: string[]) {
   const flags = new Map<string, string | boolean>();
   const positionals: string[] = [];
+
+  const valueFlags = new Set(["version", "root", "limit", "stage", "kind", "name", "member"]);
 
   let endOfFlags = false;
   for (let i = 0; i < argv.length; i++) {
@@ -52,12 +57,13 @@ function parseArgs(argv: string[]) {
     if (!endOfFlags && a.startsWith("--")) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      if (next != null && !next.startsWith("-")) {
+      if (valueFlags.has(key)) {
+        if (next == null) throw new Error(`Missing value for --${key}`);
         flags.set(key, next);
         i++;
-      } else {
-        flags.set(key, true);
+        continue;
       }
+      flags.set(key, true);
       continue;
     }
     positionals.push(a);
@@ -163,6 +169,10 @@ function isJsonFlag(value: string | boolean | undefined) {
   return value === true || value === "true" || value === "1";
 }
 
+function isTruthyFlag(value: string | boolean | undefined) {
+  return value === true || value === "true" || value === "1";
+}
+
 function looksLikeChunkId(s: string) {
   return /^\d+\.\d+\.\d+\/.+/.test(s);
 }
@@ -242,6 +252,7 @@ async function main() {
 
   const root = resolveDocsRoot(cwd, flags.get("root") ? String(flags.get("root")) : undefined);
   const json = isJsonFlag(flags.get("json") as any);
+  const quiet = isTruthyFlag(flags.get("quiet") as any);
 
   if (command === "versions") {
     const versions = await listVersions(root);
@@ -262,7 +273,7 @@ async function main() {
   const selectedVersion = typeof versionFlag === "string" ? versionFlag : latest;
   const versionDir = await resolveVersionDir(root, selectedVersion);
 
-  if (!json) {
+  if (!json && !quiet) {
     console.error(`Using version: ${selectedVersion}`);
   }
 
@@ -303,6 +314,19 @@ async function main() {
     case "search": {
       const query = positionals.join(" ").trim();
       if (!query) throw new Error("Usage: search <query>");
+
+      const openTop = isTruthyFlag(flags.get("open") as any);
+      if (openTop && json) {
+        throw new Error("Cannot use --open with --json (open prints markdown/text).");
+      }
+
+      const printIds = isTruthyFlag(flags.get("print-ids") as any);
+      if (printIds && json) {
+        throw new Error("Cannot use --print-ids with --json (use --json and read hits[].id).");
+      }
+      if (printIds && openTop) {
+        throw new Error("Cannot use --print-ids with --open.");
+      }
 
       const chunksPath = path.join(versionDir, "chunks.jsonl");
       if (!existsSync(chunksPath)) throw new Error(`Missing chunks.jsonl: ${chunksPath}`);
@@ -365,6 +389,27 @@ async function main() {
       }
 
       if (!hits.length) return;
+
+      if (openTop) {
+        const top = hits[0]!;
+        const chunk = await findChunkById(chunksPath, top.id);
+        if (!chunk) throw new Error(`Chunk not found: ${top.id}`);
+
+        if (!chunk.relPath) {
+          writeStdout(chunk.text);
+          return;
+        }
+        const abs = resolveMarkdownPathFromRelPath(chunk.relPath);
+        const md = await readFile(abs, "utf8");
+        const anchored = chunk.anchor ? extractMarkdownSectionByAnchor(md, chunk.anchor) : null;
+        writeStdout(anchored ?? chunk.text ?? md);
+        return;
+      }
+
+      if (printIds) {
+        for (const h of hits) console.log(h.id);
+        return;
+      }
 
       if (json) {
         console.log(JSON.stringify({ root, version: selectedVersion, query, limit, hits }, null, 2));

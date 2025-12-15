@@ -72,6 +72,12 @@ Entrypoint (recommended):
 - If your query/path starts with `--`, use end-of-flags:
   - `mise run docs -- search -- "--weird"`
 
+Useful flags:
+
+- Open the top search hit directly: `mise run docs -- search "<query>" --open`
+- Print only chunk ids (one per line): `mise run docs -- search "<query>" --print-ids`
+- Suppress the `Using version: ...` banner on stderr: `mise run docs -- ... --quiet`
+
 Implementation:
 
 - `tools/search.ts`

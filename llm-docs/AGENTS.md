@@ -53,5 +53,7 @@ This export pairs well with the `factorio-llm-docs` repo’s local CLI (`tools/s
 - `versions`, `search`, `get <chunkId>` (JSON), `open <chunkId|relPath|symbolKey>`
 - `--json` output for `versions` and `search`
 - `--` end-of-flags for queries/paths that start with `--`
+- `search --open` to print the top hit’s markdown/text
+- `--quiet` to suppress the `Using version: ...` banner on stderr
 
 If you’re in a repo that includes a wrapper command, prefer it (for example `mise run docs -- ...`).

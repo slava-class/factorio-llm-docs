@@ -48,7 +48,7 @@ test("cli: search supports -- end-of-flags", async () => {
 });
 
 test("cli: search --json", async () => {
-  const res = await runCli(["search", "--root", fixturesRootRel, "--version", "1.0.0", "foo", "--json"]);
+  const res = await runCli(["search", "--root", fixturesRootRel, "--version", "1.0.0", "--json", "foo"]);
   expect(res.code, res.stderr).toBe(0);
   expect(res.stderr).toBe("");
   expect(normalizeRootInJson(res.stdout)).toMatchSnapshot();

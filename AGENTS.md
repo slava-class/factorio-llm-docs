@@ -50,9 +50,9 @@ The smoke test runs the generator with `cwd` set to the cached input directory, 
 
 - `.work/factorio-api-input/<version>/.smoke-out/<version>/...`
 
-By default the test cleans this output directory after running. To keep it for inspection:
+The smoke test leaves this output directory in place for inspection. To clean it up:
 
-- `KEEP_SMOKE_OUT=1 FACTORIO_SMOKE_VERSION=2.0.72 bun test`
+- `mise run smoke-clean -- 2.0.72`
 
 Smoke test source:
 

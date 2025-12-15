@@ -34,3 +34,8 @@ run = "bun tools/factorio-docs.ts fetch-input --target ${FACTORIO_SMOKE_VERSION:
 # Usage: mise run smoke-update
 # Updates bun snapshots (set FACTORIO_SMOKE_VERSION to override).
 run = "bun tools/factorio-docs.ts fetch-input --target ${FACTORIO_SMOKE_VERSION:-2.0.72} --out .work/factorio-api-input && FACTORIO_SMOKE_VERSION=${FACTORIO_SMOKE_VERSION:-2.0.72} bun test --update-snapshots"
+
+[tasks.smoke-clean]
+# Usage: mise run smoke-clean -- <x.y.z>
+# Removes local smoke output for the given version.
+run = "rm -rf .work/factorio-api-input/${1:-${FACTORIO_SMOKE_VERSION:-2.0.72}}/.smoke-out"

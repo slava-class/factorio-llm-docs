@@ -2,6 +2,7 @@
 import { createWriteStream, existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { PrototypeApiSchema, RuntimeApiSchema, decodeJsonOrThrow } from "./effect-json";
 
 type Stage = "runtime" | "prototype";
 
@@ -447,8 +448,10 @@ async function main() {
   const runtimeJsonText = existsSync(runtimeJsonPath) ? await readFile(runtimeJsonPath, "utf8") : null;
   const prototypeJsonText = existsSync(prototypeJsonPath) ? await readFile(prototypeJsonPath, "utf8") : null;
 
-  const runtimeObj = runtimeJsonText ? (JSON.parse(runtimeJsonText) as any) : null;
-  const prototypeObj = prototypeJsonText ? (JSON.parse(prototypeJsonText) as any) : null;
+  const runtimeObj = runtimeJsonText ? (decodeJsonOrThrow(RuntimeApiSchema, runtimeJsonText, "runtime-api.json") as any) : null;
+  const prototypeObj = prototypeJsonText
+    ? (decodeJsonOrThrow(PrototypeApiSchema, prototypeJsonText, "prototype-api.json") as any)
+    : null;
 
   if (!runtimeObj && !prototypeObj) {
     throw new Error("Expected runtime-api.json and/or prototype-api.json in the current directory.");

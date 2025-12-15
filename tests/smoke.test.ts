@@ -1,8 +1,9 @@
 import { test, expect } from "bun:test";
 import { createReadStream, existsSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
+import { ChunkRecordSchema, ManifestSchema, SymbolsSchema, decodeJsonOrThrow } from "../tools/effect-json";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 const version = process.env.FACTORIO_SMOKE_VERSION ?? "2.0.72";
@@ -22,9 +23,6 @@ test("smoke: generator runs against cached Factorio inputs", async () => {
 
   const outDirName = ".smoke-out";
   const outVersionDir = path.join(cachedInputDir, outDirName, version);
-  const keep = process.env.KEEP_SMOKE_OUT === "1";
-
-  await rm(path.join(cachedInputDir, outDirName), { recursive: true, force: true });
 
   const proc = Bun.spawn(
     [
@@ -50,7 +48,7 @@ test("smoke: generator runs against cached Factorio inputs", async () => {
   expect(code, `stdout:\n${stdout}\n\nstderr:\n${stderr}`).toBe(0);
 
   const manifestPath = path.join(outVersionDir, "manifest.json");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as any;
+  const manifest = decodeJsonOrThrow(ManifestSchema, await readFile(manifestPath, "utf8"), "manifest.json") as any;
   delete manifest.generated_at;
   expect(manifest).toMatchSnapshot();
 
@@ -58,7 +56,7 @@ test("smoke: generator runs against cached Factorio inputs", async () => {
   expect(readme).toContain(version);
   expect(readme).toMatchSnapshot();
 
-  const symbols = JSON.parse(await readFile(path.join(outVersionDir, "symbols.json"), "utf8")) as any;
+  const symbols = decodeJsonOrThrow(SymbolsSchema, await readFile(path.join(outVersionDir, "symbols.json"), "utf8"), "symbols.json") as any;
   expect(symbols["runtime:class:LuaEntity"]).toEqual({
     id: `${version}/runtime/class/LuaEntity`,
     stage: "runtime",
@@ -94,14 +92,10 @@ test("smoke: generator runs against cached Factorio inputs", async () => {
     if (!line.includes(`"stage":"runtime"`)) continue;
     if (!line.includes(`"kind":"class"`)) continue;
     if (!line.includes(`"name":"LuaEntity"`)) continue;
-    luaEntityChunk = JSON.parse(line) as any;
+    luaEntityChunk = decodeJsonOrThrow(ChunkRecordSchema, line, "chunks.jsonl line") as any;
     break;
   }
   rl.close();
   expect(luaEntityChunk, "Expected a runtime class chunk for LuaEntity").toBeTruthy();
   expect(luaEntityChunk.relPath).toBe("runtime/classes/LuaEntity.md");
-
-  if (!keep) {
-    await rm(path.join(cachedInputDir, outDirName), { recursive: true, force: true });
-  }
 });

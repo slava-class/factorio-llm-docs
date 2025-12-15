@@ -44,7 +44,7 @@ Each line contains metadata plus a chunk of text, roughly:
 - `id`: stable-ish canonical ID (often includes stage/kind/name and `#anchor` for members).
 - `version`, `stage` (`runtime`/`prototype`/`auxiliary`), `kind`, `name`, optional `member`.
 - `anchor`: when applicable.
-- `relMarkdownPath`: points at the Markdown source page.
+- `relPath`: points at the Markdown source page (version-root-relative, e.g. `runtime/classes/LuaEntity.md`).
 - `text`: the chunk content (usually includes a heading like `# LuaEntity.clone (method)`).
 
 This is already good enough to build robust retrieval tooling on top of.
@@ -181,12 +181,7 @@ Why:
 
 ### Make Markdown Paths Portable
 
-Today, `relMarkdownPath` is a long relative path (relative to the generator’s working directory), which is awkward for consumers.
-
-Recommended addition:
-
-- Add `relPath` (posix, version-root-relative), e.g. `runtime/classes/LuaEntity.md`.
-- Keep `relMarkdownPath` for backward compatibility if you already depend on it elsewhere.
+`chunks.jsonl` includes `relPath` (posix, version-root-relative), e.g. `runtime/classes/LuaEntity.md`.
 
 This makes CLI/MCP “open markdown” trivial and avoids path-rewriting in downstream tools.
 
@@ -206,4 +201,3 @@ These practices matter more than model choice:
 3. Add `symbols.json` + `relPath` output field(s).
 4. Add optional `index.sqlite` generation.
 5. Add `diff` generation between versions (JSON + Markdown).
-

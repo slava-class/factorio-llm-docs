@@ -28,7 +28,7 @@ Examples:
 
 The export includes both readable Markdown and machine-readable sources:
 
-- `llm-docs/<version>/chunks.jsonl` — best for RAG ingestion; each record has `id`, `stage`, `kind`, `name`, `text`, and a `relMarkdownPath`.
+- `llm-docs/<version>/chunks.jsonl` — best for RAG ingestion; each record has `id`, `stage`, `kind`, `name`, `text`, and `relPath`.
 - `llm-docs/<version>/runtime-api.json` / `prototype-api.json` — original JSON formats (useful for tooling or stricter parsing).
 
 ## Link Expectations
@@ -44,5 +44,4 @@ For best results, retrieve narrowly-scoped chunks first:
 - class attribute: `.../runtime/class/<Class>#<attribute>`
 - prototype property: `.../prototype/prototype/<Prototype>#<property>`
 
-If you need context, also pull the corresponding symbol page from `relMarkdownPath`.
-
+If you need context, also pull the corresponding symbol page from `relPath` (under `llm-docs/<version>/`).

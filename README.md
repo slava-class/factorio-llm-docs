@@ -34,7 +34,7 @@ GitHub Pages (`llm-docs/index.html` and friends) is primarily for humans.
 
 For AI agents / tooling:
 
-- Prefer `llm-docs/<version>/chunks.jsonl` for RAG ingestion (each line includes `id`, `stage`, `kind`, `name`, `text`, and `relMarkdownPath`).
+- Prefer `llm-docs/<version>/chunks.jsonl` for RAG ingestion (each line includes `id`, `stage`, `kind`, `name`, `text`, and `relPath`).
 - Prefer `llm-docs/<version>/*.md` for “paste into context” or when you want a readable canonical source.
 - Use `llm-docs/<version>/SEARCH.md` as the starting jump list when you don’t know which API surface you need.
 - See `llm-docs/AGENTS.md` for agent-oriented notes and retrieval tips.

@@ -21,7 +21,7 @@ type ChunkRecord = {
   kind: string;
   name: string;
   member?: string;
-  relMarkdownPath?: string;
+  relPath?: string;
   anchor?: string;
   text: string;
 };
@@ -511,9 +511,18 @@ async function main() {
     },
   };
 
+  const outVersionRelPrefix = outVersionRel.endsWith("/") ? outVersionRel : `${outVersionRel}/`;
+
+  function toVersionRelPath(fromCwdRelPath: string) {
+    if (fromCwdRelPath.startsWith(outVersionRelPrefix)) return fromCwdRelPath.slice(outVersionRelPrefix.length);
+    const rel = path.posix.relative(outVersionRel, fromCwdRelPath);
+    return rel.length ? rel : path.posix.basename(fromCwdRelPath);
+  }
+
   function writeChunk(rec: ChunkRecord) {
-    const convertedText = rec.relMarkdownPath
-      ? convertSiteHtmlLinks(convertInternalLinks(rec.text, rec.relMarkdownPath, resolve), rec.relMarkdownPath, resolve)
+    const fromRel = rec.relPath ? `${outVersionRelPrefix}${rec.relPath}` : undefined;
+    const convertedText = fromRel
+      ? convertSiteHtmlLinks(convertInternalLinks(rec.text, fromRel, resolve), fromRel, resolve)
       : rec.text;
     chunksStream.write(`${JSON.stringify({ ...rec, text: convertedText })}\n`);
     stats.counts.chunks++;
@@ -566,7 +575,7 @@ async function main() {
       stage,
       kind: `${kind}_index`,
       name: title,
-      relMarkdownPath: rel,
+      relPath: toVersionRelPath(rel),
       text: md,
     });
   }
@@ -592,7 +601,7 @@ async function main() {
         stage: "auxiliary",
         kind: "auxiliary",
         name: base,
-        relMarkdownPath: outRel,
+        relPath: toVersionRelPath(outRel),
         text: `# ${title}\n\n${md}`,
       });
     }
@@ -646,7 +655,7 @@ async function main() {
             kind: "class_attribute",
             name: c.name,
             member: a.name,
-            relMarkdownPath: outRel,
+            relPath: toVersionRelPath(outRel),
             anchor: a.name,
             text: `# ${c.name}.${a.name} (attribute)\n\n- Read: \`${readType}\`\n- Write: \`${writeType}\`\n- Optional: \`${String(!!a.optional)}\`\n\n${a.description ?? ""}\n`,
           });
@@ -680,7 +689,7 @@ async function main() {
             kind: "class_method",
             name: c.name,
             member: m.name,
-            relMarkdownPath: outRel,
+            relPath: toVersionRelPath(outRel),
             anchor: m.name,
             text: `# ${c.name}.${m.name} (method)\n\n\`\`\`lua\n${sig}\n\`\`\`\n\n${m.description ?? ""}\n`,
           });
@@ -694,7 +703,7 @@ async function main() {
         stage: "runtime",
         kind: "class",
         name: c.name,
-        relMarkdownPath: outRel,
+        relPath: toVersionRelPath(outRel),
         text: `# ${c.name}\n\n${c.description ?? ""}\n`,
       });
     }
@@ -711,7 +720,7 @@ async function main() {
         stage: "runtime",
         kind: "concept",
         name: concept.name,
-        relMarkdownPath: outRel,
+        relPath: toVersionRelPath(outRel),
         text: md,
       });
     }
@@ -737,7 +746,7 @@ async function main() {
         stage: "runtime",
         kind: "event",
         name: event.name,
-        relMarkdownPath: outRel,
+        relPath: toVersionRelPath(outRel),
         text: md,
       });
     }
@@ -758,7 +767,7 @@ async function main() {
             kind: "define_value",
             name: `defines.${def.name}`,
             member: v.name,
-            relMarkdownPath: outRel,
+            relPath: toVersionRelPath(outRel),
             anchor: v.name,
             text: `# defines.${def.name}.${v.name}\n\n${v.description ?? ""}\n`,
           });
@@ -771,7 +780,7 @@ async function main() {
         stage: "runtime",
         kind: "define",
         name: `defines.${def.name}`,
-        relMarkdownPath: outRel,
+        relPath: toVersionRelPath(outRel),
         text: md,
       });
     }
@@ -798,7 +807,7 @@ async function main() {
         stage: "runtime",
         kind: "global_function",
         name: f.name,
-        relMarkdownPath: outRel,
+        relPath: toVersionRelPath(outRel),
         text: md,
       });
     }
@@ -815,7 +824,7 @@ async function main() {
         stage: "runtime",
         kind: "global_object",
         name: o.name,
-        relMarkdownPath: outRel,
+        relPath: toVersionRelPath(outRel),
         text: md,
       });
     }
@@ -864,7 +873,7 @@ async function main() {
             kind: "prototype_property",
             name: p.name,
             member: prop.name,
-            relMarkdownPath: outRel,
+            relPath: toVersionRelPath(outRel),
             anchor: prop.name,
             text: `# ${p.name}.${prop.name} (property)\n\n- Type: \`${typeToString(prop.type)}\`\n- Optional: \`${String(!!prop.optional)}\`\n\n${prop.description ?? ""}\n`,
           });
@@ -878,7 +887,7 @@ async function main() {
         stage: "prototype",
         kind: "prototype",
         name: p.name,
-        relMarkdownPath: outRel,
+        relPath: toVersionRelPath(outRel),
         text: `# ${p.name}\n\n${p.description ?? ""}\n`,
       });
     }
@@ -906,7 +915,7 @@ async function main() {
             kind: "type_property",
             name: t.name,
             member: prop.name,
-            relMarkdownPath: outRel,
+            relPath: toVersionRelPath(outRel),
             anchor: prop.name,
             text: `# ${t.name}.${prop.name} (property)\n\n- Type: \`${typeToString(prop.type)}\`\n- Optional: \`${String(!!prop.optional)}\`\n\n${prop.description ?? ""}\n`,
           });
@@ -920,7 +929,7 @@ async function main() {
         stage: "prototype",
         kind: "type",
         name: t.name,
-        relMarkdownPath: outRel,
+        relPath: toVersionRelPath(outRel),
         text: md,
       });
     }
@@ -941,7 +950,7 @@ async function main() {
             kind: "define_value",
             name: `defines.${def.name}`,
             member: v.name,
-            relMarkdownPath: outRel,
+            relPath: toVersionRelPath(outRel),
             anchor: v.name,
             text: `# defines.${def.name}.${v.name}\n\n${v.description ?? ""}\n`,
           });
@@ -954,7 +963,7 @@ async function main() {
         stage: "prototype",
         kind: "define",
         name: `defines.${def.name}`,
-        relMarkdownPath: outRel,
+        relPath: toVersionRelPath(outRel),
         text: md,
       });
     }

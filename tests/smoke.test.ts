@@ -1,7 +1,8 @@
 import { test, expect } from "bun:test";
-import { existsSync } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
+import readline from "node:readline";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 const version = process.env.FACTORIO_SMOKE_VERSION ?? "2.0.72";
@@ -72,8 +73,26 @@ test("smoke: generator runs against cached Factorio inputs", async () => {
   const chunksStat = await Bun.file(path.join(outVersionDir, "chunks.jsonl")).stat();
   expect(chunksStat.size).toBeGreaterThan(10_000);
 
+  const chunksPath = path.join(outVersionDir, "chunks.jsonl");
+  const rl = readline.createInterface({
+    input: createReadStream(chunksPath, { encoding: "utf8" }),
+    crlfDelay: Infinity,
+  });
+
+  let luaEntityChunk: any | undefined;
+  for await (const line of rl) {
+    if (!line) continue;
+    if (!line.includes(`"stage":"runtime"`)) continue;
+    if (!line.includes(`"kind":"class"`)) continue;
+    if (!line.includes(`"name":"LuaEntity"`)) continue;
+    luaEntityChunk = JSON.parse(line) as any;
+    break;
+  }
+  rl.close();
+  expect(luaEntityChunk, "Expected a runtime class chunk for LuaEntity").toBeTruthy();
+  expect(luaEntityChunk.relPath).toBe("runtime/classes/LuaEntity.md");
+
   if (!keep) {
     await rm(path.join(cachedInputDir, outDirName), { recursive: true, force: true });
   }
 });
-

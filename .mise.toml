@@ -19,3 +19,18 @@ run = "bun tools/factorio-docs.ts generate-last5 --channel ${1:-stable}"
 # Usage: mise run generate-all
 # Generates stable + latest + newest 5 (deduped), then rebuilds llm-docs/index.html.
 run = "bun tools/factorio-docs.ts generate-all && bun tools/build-site.ts && bun tools/site-index.ts"
+
+[tasks.setup-smoke-input]
+# Usage: mise run setup-smoke-input -- <x.y.z>
+# Downloads Factorio API docs input files (runtime/prototype JSON + auxiliary HTML) and caches them under .work/.
+run = "bun tools/factorio-docs.ts fetch-input --target ${1:-2.0.72} --out .work/factorio-api-input"
+
+[tasks.smoke]
+# Usage: mise run smoke
+# Runs generator smoke test against cached inputs (set FACTORIO_SMOKE_VERSION to override).
+run = "bun tools/factorio-docs.ts fetch-input --target ${FACTORIO_SMOKE_VERSION:-2.0.72} --out .work/factorio-api-input && FACTORIO_SMOKE_VERSION=${FACTORIO_SMOKE_VERSION:-2.0.72} bun test"
+
+[tasks.smoke-update]
+# Usage: mise run smoke-update
+# Updates bun snapshots (set FACTORIO_SMOKE_VERSION to override).
+run = "bun tools/factorio-docs.ts fetch-input --target ${FACTORIO_SMOKE_VERSION:-2.0.72} --out .work/factorio-api-input && FACTORIO_SMOKE_VERSION=${FACTORIO_SMOKE_VERSION:-2.0.72} bun test --update-snapshots"

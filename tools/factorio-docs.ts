@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
-import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const BASE = "https://lua-api.factorio.com";
@@ -99,6 +100,24 @@ async function downloadArchiveZip(version: string, outZipPath: string) {
   await writeFile(outZipPath, Buffer.from(await res.arrayBuffer()));
 }
 
+async function unzipSelected(zipPath: string, extractDir: string) {
+  const patterns = ["*/runtime-api.json", "*/prototype-api.json", "*/auxiliary/*"];
+  const unzip = Bun.spawn(["unzip", "-q", zipPath, ...patterns, "-d", extractDir], {
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  const unzipCode = await unzip.exited;
+  if (unzipCode === 0) return;
+
+  console.warn("Selective unzip failed; falling back to full unzip.");
+  const unzipAll = Bun.spawn(["unzip", "-q", zipPath, "-d", extractDir], {
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  const unzipAllCode = await unzipAll.exited;
+  if (unzipAllCode !== 0) throw new Error(`unzip failed with exit code ${unzipAllCode}`);
+}
+
 async function findDocsRoot(extractedDir: string): Promise<string> {
   async function walk(dir: string, depth: number): Promise<string | null> {
     if (depth < 0) return null;
@@ -142,6 +161,62 @@ async function runGenerator(docsRoot: string, repoRoot: string, version: string)
   );
   const code = await proc.exited;
   if (code !== 0) throw new Error(`Generator failed with exit code ${code}`);
+}
+
+async function fetchInputForVersion(version: string, outBaseAbs: string, force: boolean) {
+  const outDirAbs = path.join(outBaseAbs, version);
+  const runtimeOut = path.join(outDirAbs, "runtime-api.json");
+  const prototypeOut = path.join(outDirAbs, "prototype-api.json");
+  const auxiliaryOut = path.join(outDirAbs, "auxiliary");
+  const zipPath = path.join(outDirAbs, "archive.zip");
+
+  if (!force && existsSync(runtimeOut)) {
+    console.log(`Input already present: ${outDirAbs}`);
+    return;
+  }
+
+  if (force) {
+    await rm(outDirAbs, { recursive: true, force: true });
+  }
+  await mkdir(outDirAbs, { recursive: true });
+
+  if (!existsSync(zipPath) || force) {
+    console.log(`Downloading ${version} archive.zip...`);
+    await downloadArchiveZip(version, zipPath);
+  }
+
+  const extractDir = path.join(outDirAbs, ".extracted");
+  await rm(extractDir, { recursive: true, force: true });
+  await mkdir(extractDir, { recursive: true });
+
+  try {
+    await unzipSelected(zipPath, extractDir);
+    const docsRoot = await findDocsRoot(extractDir);
+
+    const runtimeSrc = path.join(docsRoot, "runtime-api.json");
+    const prototypeSrc = path.join(docsRoot, "prototype-api.json");
+    const auxiliarySrc = path.join(docsRoot, "auxiliary");
+
+    if (!existsSync(runtimeSrc)) throw new Error(`Missing runtime-api.json in extracted archive for ${version}`);
+
+    await cp(runtimeSrc, runtimeOut);
+    if (existsSync(prototypeSrc)) await cp(prototypeSrc, prototypeOut);
+
+    await rm(auxiliaryOut, { recursive: true, force: true });
+    if (existsSync(auxiliarySrc)) {
+      await cp(auxiliarySrc, auxiliaryOut, { recursive: true });
+    }
+
+    await writeFile(
+      path.join(outDirAbs, "SOURCE.json"),
+      JSON.stringify({ version, archive_url: `${BASE}/${version}/static/archive.zip` }, null, 2) + "\n",
+      "utf8",
+    );
+
+    console.log(`Wrote input fixture: ${outDirAbs}`);
+  } finally {
+    await rm(extractDir, { recursive: true, force: true });
+  }
 }
 
 async function generateForVersion(version: string) {
@@ -226,11 +301,27 @@ async function cmdGenerateAll() {
   }
 }
 
+async function cmdFetchInput(target: string, out: string | undefined, force: boolean) {
+  const repoRoot = path.resolve(import.meta.dir, "..");
+  const outBaseAbs = path.isAbsolute(out ?? "") ? String(out) : path.join(repoRoot, out ?? path.join(".work", "factorio-api-input"));
+
+  const version = isVersion(target)
+    ? target
+    : target === "stable" || target === "latest"
+      ? await resolveChannel(target)
+      : null;
+  if (!version) throw new Error(`Unknown target: ${target} (expected stable|latest|x.y.z)`);
+
+  await fetchInputForVersion(version, outBaseAbs, force);
+}
+
 async function main() {
   const { cmd, flags } = parseArgs(Bun.argv.slice(2));
 
   if (!cmd || cmd === "--help" || cmd === "help") {
-    console.log(`factorio-docs\n\nCommands:\n  versions\n  generate --target <stable|latest|x.y.z>\n  generate-last5 --channel <stable|latest>\n  generate-all\n`);
+    console.log(
+      `factorio-docs\n\nCommands:\n  versions\n  generate --target <stable|latest|x.y.z>\n  generate-last5 --channel <stable|latest>\n  generate-all\n  fetch-input --target <stable|latest|x.y.z> [--out <dir>] [--force]\n`,
+    );
     process.exit(0);
   }
 
@@ -256,6 +347,14 @@ async function main() {
 
   if (cmd === "generate-all") {
     await cmdGenerateAll();
+    return;
+  }
+
+  if (cmd === "fetch-input") {
+    const target = String(flags.get("target") ?? "latest");
+    const out = flags.get("out");
+    const force = Boolean(flags.get("force") ?? false);
+    await cmdFetchInput(target, typeof out === "string" ? out : undefined, force);
     return;
   }
 

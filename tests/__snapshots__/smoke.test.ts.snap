@@ -1,0 +1,225 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`smoke: generator runs against cached Factorio inputs 1`] = `
+{
+  "counts": {
+    "auxiliary": {
+      "pages": 13,
+    },
+    "chunks": 14080,
+    "prototype": {
+      "defines": 60,
+      "prototypes": 278,
+      "types": 687,
+    },
+    "runtime": {
+      "classes": 148,
+      "concepts": 417,
+      "defines": 60,
+      "events": 219,
+      "global_functions": 3,
+      "global_objects": 9,
+    },
+  },
+  "outputs": {
+    "chunks_jsonl": ".smoke-out/2.0.72/chunks.jsonl",
+    "markdown_root": ".smoke-out/2.0.72",
+  },
+  "version": "2.0.72",
+}
+`;
+
+exports[`smoke: generator runs against cached Factorio inputs 2`] = `
+"# Factorio API Docs (LLM Export) — 2.0.72
+
+- Runtime: \`runtime/\` (control stage)
+  - Classes: \`runtime/classes/index.md\`
+  - Events: \`runtime/events/index.md\`
+  - Concepts: \`runtime/concepts/index.md\`
+  - Defines: \`runtime/defines/index.md\`
+- Prototype: \`prototype/\` (data stage)
+  - Prototypes: \`prototype/prototypes/index.md\`
+  - Types: \`prototype/types/index.md\`
+  - Defines: \`prototype/defines/index.md\`
+- Auxiliary: \`auxiliary/\`
+  - Data Lifecycle: \`auxiliary/data-lifecycle.md\`
+  - Mod Structure: \`auxiliary/mod-structure.md\`
+  - Migrations: \`auxiliary/migrations.md\`
+- Start Here: \`SEARCH.md\`
+
+Machine-readable sources:
+
+- \`runtime-api.json\`
+- \`prototype-api.json\`
+- \`chunks.jsonl\` (chunked text + metadata)
+"
+`;
+
+exports[`smoke: generator runs against cached Factorio inputs 3`] = `
+"# Search Guide — 2.0.72
+
+Use this page as a “jump list” when working with Codex or any RAG indexer.
+
+## Start Here
+
+- Runtime overview: [Runtime Classes](runtime/classes/index.md), [Runtime Events](runtime/events/index.md), [Runtime Concepts](runtime/concepts/index.md), [Runtime Defines](runtime/defines/index.md)
+- Prototype overview: [Prototype Prototypes](prototype/prototypes/index.md), [Prototype Types](prototype/types/index.md), [Prototype Defines](prototype/defines/index.md)
+- Core mod docs: [Data Lifecycle](auxiliary/data-lifecycle.md), [Mod Structure](auxiliary/mod-structure.md), [Storage](auxiliary/storage.md), [Migrations](auxiliary/migrations.md)
+
+## Tiles (stone paths, etc.)
+
+- Get/inspect tiles (runtime): [LuaSurface](runtime/classes/LuaSurface.md), [LuaTile](runtime/classes/LuaTile.md), [LuaTilePrototype](runtime/classes/LuaTilePrototype.md)
+- Place/replace tiles: [LuaSurface.set_tiles](runtime/classes/LuaSurface.md#set_tiles), [Tile](runtime/concepts/Tile.md), [TilePosition](runtime/concepts/TilePosition.md)
+- Mine tiles: [LuaControl.mine_tile](runtime/classes/LuaControl.md#mine_tile)
+- Tile prototypes (data stage): [TilePrototype](prototype/prototypes/TilePrototype.md)
+- Find a tile name (vanilla or modded): [LuaPrototypes.tile](runtime/classes/LuaPrototypes.md#tile), [LuaPrototypes.get_tile_filtered](runtime/classes/LuaPrototypes.md#get_tile_filtered)
+
+## Entities & Prototypes
+
+- Runtime entity API: [LuaEntity](runtime/classes/LuaEntity.md), [LuaEntityPrototype](runtime/classes/LuaEntityPrototype.md)
+- Enumerate prototypes by name: [LuaPrototypes](runtime/classes/LuaPrototypes.md)
+- Data-stage entity definition: [EntityPrototype](prototype/prototypes/EntityPrototype.md)
+
+## Events & Script Hooks
+
+- Browse events: [Runtime Events](runtime/events/index.md)
+- Register handlers: [LuaBootstrap.on_event](runtime/classes/LuaBootstrap.md#on_event), [LuaBootstrap.on_nth_tick](runtime/classes/LuaBootstrap.md#on_nth_tick)
+- Custom inputs: [CustomInputPrototype](prototype/prototypes/CustomInputPrototype.md), [CustomInputEvent](runtime/events/CustomInputEvent.md)
+
+## Players, Surfaces, Forces
+
+- Player API: [LuaPlayer](runtime/classes/LuaPlayer.md), [LuaControl](runtime/classes/LuaControl.md)
+- Surface API: [LuaSurface](runtime/classes/LuaSurface.md)
+- Force API: [LuaForce](runtime/classes/LuaForce.md)
+
+## GUI & Rendering
+
+- GUI root: [LuaGui](runtime/classes/LuaGui.md), [LuaGuiElement](runtime/classes/LuaGuiElement.md), [LuaStyle](runtime/classes/LuaStyle.md)
+- Rendering API: [LuaRendering](runtime/classes/LuaRendering.md)"
+`;
+
+exports[`smoke: generator runs against cached Factorio inputs 4`] = `
+"---
+version: 2.0.72
+stage: runtime
+kind: class
+name: LuaEntity
+source: runtime-api.json
+---
+
+# LuaEntity
+
+The primary interface for interacting with entities through the Lua API. Entities are everything that exists on the map except for tiles (see [LuaTile](LuaTile.md)).
+
+Most functions on LuaEntity also work when the entity is contained in a ghost.
+
+## Parent
+
+- \`LuaControl\`
+
+## Attributes
+
+### rail_length
+
+- Read: \`double\`
+- Write: \`unknown\`
+- Optional: \`false\`
+
+Length of this rail piece.
+
+### name
+
+- Read: \`string\`
+- Write: \`unknown\`
+- Optional: \`false\`
+
+Name of the entity prototype. E.g. "inserter" or "fast-inserter".
+
+### ghost_name
+
+- Read: \`string\`
+- Write: \`unknown\`
+- Optional: \`false\`
+
+Name of the entity or tile contained in this ghost.
+
+### localised_name
+
+- Read: \`LocalisedString\`
+- Write: \`unknown\`
+- Optional: \`false\`
+
+Localised name of the entity.
+
+### localised_description
+
+- Read: \`LocalisedString\`
+- Write: \`unknown\`
+- Optional: \`false\`
+
+
+### ghost_localised_name"
+`;
+
+exports[`smoke: generator runs against cached Factorio inputs 5`] = `
+"---
+version: 2.0.72
+stage: prototype
+kind: prototype
+name: EntityPrototype
+source: prototype-api.json
+---
+
+# EntityPrototype
+
+Abstract base of all entities in the game. Entity is nearly everything that can be on the map (except tiles).
+
+For in game script access to entity, take a look at [LuaEntity](../../runtime/classes/LuaEntity.md).
+
+## Parent
+
+- \`Prototype\`
+
+## Properties
+
+### icons
+
+- Type: \`Array<IconData>\`
+- Optional: \`true\`
+- Override: \`false\`
+
+This will be used in the electric network statistics, editor building selection, and the bonus gui. Can't be an empty array.
+
+Either this or \`icon\` is mandatory for entities that have at least one of these flags active: \`"placeable-neutral"\`, \`"placeable-player\`", \`"placeable-enemy"\`.
+
+
+### icon
+
+- Type: \`FileName\`
+- Optional: \`true\`
+- Override: \`false\`
+
+Path to the icon file.
+
+Either this or \`icons\` is mandatory for entities that have at least one of these flags active: \`"placeable-neutral"\`, \`"placeable-player\`", \`"placeable-enemy"\`.
+
+Only loaded if \`icons\` is not defined.
+
+
+## Examples
+
+\`\`\`
+icon = "__base__/graphics/icons/wooden-chest.png"
+\`\`\`
+
+### icon_size
+
+- Type: \`SpriteSizeType\`
+- Optional: \`true\`
+- Override: \`false\`
+
+The size of the square icon, in pixels. E.g. \`32\` for a 32px by 32px icon. Must be larger than \`0\`.
+
+Only loaded if \`icons\` is not defined.
+"
+`;

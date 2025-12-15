@@ -16,6 +16,7 @@ Commands:
 - Generate docs for a target: `mise run generate -- latest` (or `stable`, or `2.0.72`)
 - Generate for a channel + newest 5: `mise run generate-last5 -- stable` (or `latest`)
 - Generate stable + latest + newest 5 (deduped) and build the browsable site: `mise run generate-all`
+- Smoke checks (cached inputs + bun test snapshots): `FACTORIO_SMOKE_VERSION=2.0.72 mise run smoke-update`, then `FACTORIO_SMOKE_VERSION=2.0.72 mise run smoke`
 
 Generated output:
 
@@ -37,3 +38,7 @@ For AI agents / tooling:
 - Prefer `llm-docs/<version>/*.md` for “paste into context” or when you want a readable canonical source.
 - Use `llm-docs/<version>/SEARCH.md` as the starting jump list when you don’t know which API surface you need.
 - See `llm-docs/AGENTS.md` for agent-oriented notes and retrieval tips.
+
+## Tooling Roadmap
+
+See `TOOLING.md` for recommended next tooling (local search CLI, MCP server, optional SQLite index, and version diff tooling).

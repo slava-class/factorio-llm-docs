@@ -13,9 +13,9 @@ Prereqs:
 Commands:
 
 - List available versions/channels: `mise run versions` (or `bun tools/factorio-docs.ts versions`)
-- Generate docs for a target: `mise run generate -- latest` (or `stable`, `experimental`, or `2.0.72`)
-- Generate for a channel + newest 5: `mise run generate-last5 -- stable` (or `experimental`)
-- Generate stable + experimental + newest 5 (deduped) and build the browsable site: `mise run generate-all`
+- Generate docs for a target: `mise run generate -- latest` (or `stable`, or `2.0.72`)
+- Generate for a channel + newest 5: `mise run generate-last5 -- stable` (or `latest`)
+- Generate stable + latest + newest 5 (deduped) and build the browsable site: `mise run generate-all`
 
 Generated output:
 

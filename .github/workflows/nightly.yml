@@ -24,11 +24,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unzip
 
-      - name: Generate stable + last5
-        run: bun tools/factorio-docs.ts generate-last5 --channel stable
-
-      - name: Generate experimental + last5
-        run: bun tools/factorio-docs.ts generate-last5 --channel experimental
+      - name: Generate stable + latest + last5
+        run: bun tools/factorio-docs.ts generate-all
 
       - name: Build site
         run: |

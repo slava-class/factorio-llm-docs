@@ -4,11 +4,10 @@ import path from "node:path";
 
 const BASE = "https://lua-api.factorio.com";
 
-type Channel = "stable" | "experimental" | "latest";
+type Channel = "stable" | "latest";
 
 type VersionsReport = {
   stable?: string;
-  experimental?: string;
   latest?: string;
   last5: string[];
   all: string[];
@@ -54,8 +53,7 @@ function cmpSemverDesc(a: string, b: string) {
 
 async function fetchText(url: string) {
   const res = await fetch(url, { redirect: "follow" });
-  if (!res.ok)
-    throw new Error(`Fetch failed ${res.status} ${res.statusText} for ${url}`);
+  if (!res.ok) throw new Error(`Fetch failed ${res.status} ${res.statusText} for ${url}`);
   return await res.text();
 }
 
@@ -75,20 +73,15 @@ async function resolveChannel(channel: Channel): Promise<string> {
 }
 
 function parseAllVersionsFromIndex(html: string): string[] {
-  const matches = [
-    ...html.matchAll(
-      /href=["'](?:https?:\/\/lua-api\.factorio\.com\/)?\/?(\d+\.\d+\.\d+)\/?["']/g,
-    ),
-  ].map((m) => m[1]);
+  const matches = [...html.matchAll(/href=["'](?:https?:\/\/lua-api\.factorio\.com\/)?\/?(\d+\.\d+\.\d+)\/?["']/g)].map((m) => m[1]);
   const uniq = Array.from(new Set(matches)).filter(isVersion);
   uniq.sort(cmpSemverDesc);
   return uniq;
 }
 
 async function getVersions(): Promise<VersionsReport> {
-  const [stable, experimental, latest] = await Promise.all([
+  const [stable, latest] = await Promise.all([
     resolveChannel("stable").catch(() => undefined),
-    resolveChannel("experimental").catch(() => undefined),
     resolveChannel("latest").catch(() => undefined),
   ]);
 
@@ -96,16 +89,13 @@ async function getVersions(): Promise<VersionsReport> {
   const all = parseAllVersionsFromIndex(indexHtml);
   const last5 = all.slice(0, 5);
 
-  return { stable, experimental, latest, last5, all };
+  return { stable, latest, last5, all };
 }
 
 async function downloadArchiveZip(version: string, outZipPath: string) {
   const url = `${BASE}/${version}/static/archive.zip`;
   const res = await fetch(url, { redirect: "follow" });
-  if (!res.ok)
-    throw new Error(
-      `Download failed ${res.status} ${res.statusText} for ${url}`,
-    );
+  if (!res.ok) throw new Error(`Download failed ${res.status} ${res.statusText} for ${url}`);
   await writeFile(outZipPath, Buffer.from(await res.arrayBuffer()));
 }
 
@@ -125,16 +115,11 @@ async function findDocsRoot(extractedDir: string): Promise<string> {
   }
 
   const found = await walk(extractedDir, 5);
-  if (!found)
-    throw new Error(`Could not find runtime-api.json under ${extractedDir}`);
+  if (!found) throw new Error(`Could not find runtime-api.json under ${extractedDir}`);
   return found;
 }
 
-async function runGenerator(
-  docsRoot: string,
-  repoRoot: string,
-  version: string,
-) {
+async function runGenerator(docsRoot: string, repoRoot: string, version: string) {
   const outDirAbs = path.join(repoRoot, "llm-docs");
   const outDirFromDocsRoot = path.relative(docsRoot, outDirAbs) || ".";
   const generator = path.join(repoRoot, "tools", "factorio-api-docs-to-llm.ts");
@@ -162,7 +147,6 @@ async function runGenerator(
 async function generateForVersion(version: string) {
   const repoRoot = path.resolve(import.meta.dir, "..");
 
-  // Keep all temp work inside the repo (gitignored) for predictable paths and permissions.
   const workBase = path.join(repoRoot, ".work", "factorio-api", version);
   const zipPath = path.join(workBase, "archive.zip");
   const extractDir = path.join(workBase, "extracted");
@@ -178,8 +162,7 @@ async function generateForVersion(version: string) {
       stderr: "inherit",
     });
     const unzipCode = await unzip.exited;
-    if (unzipCode !== 0)
-      throw new Error(`unzip failed with exit code ${unzipCode}`);
+    if (unzipCode !== 0) throw new Error(`unzip failed with exit code ${unzipCode}`);
 
     const docsRoot = await findDocsRoot(extractDir);
     await runGenerator(docsRoot, repoRoot, version);
@@ -199,27 +182,23 @@ async function cmdGenerate(target: string) {
     return;
   }
 
-  if (target === "stable" || target === "experimental" || target === "latest") {
+  if (target === "stable" || target === "latest") {
     const version = await resolveChannel(target);
     await generateForVersion(version);
     return;
   }
 
-  throw new Error(
-    `Unknown target: ${target} (expected stable|experimental|latest|x.y.z)`,
-  );
+  throw new Error(`Unknown target: ${target} (expected stable|latest|x.y.z)`);
 }
 
 async function cmdGenerateLast5(channel: Channel) {
   const report = await getVersions();
-  const base =
-    channel === "stable"
-      ? report.stable
-      : channel === "experimental"
-        ? report.experimental
-        : report.latest;
+  const base = channel === "stable" ? report.stable : report.latest;
 
-  if (!base) throw new Error(`Could not resolve ${channel} version`);
+  if (!base) {
+    console.warn(`Skipping ${channel}: could not resolve channel version.`);
+    return;
+  }
 
   const set = new Set<string>();
   set.add(base);
@@ -236,7 +215,7 @@ async function cmdGenerateAll() {
   const report = await getVersions();
   const set = new Set<string>();
   if (report.stable) set.add(report.stable);
-  if (report.experimental) set.add(report.experimental);
+  if (report.latest) set.add(report.latest);
   for (const v of report.last5) set.add(v);
 
   const list = Array.from(set).sort(cmpSemverDesc);
@@ -251,9 +230,7 @@ async function main() {
   const { cmd, flags } = parseArgs(Bun.argv.slice(2));
 
   if (!cmd || cmd === "--help" || cmd === "help") {
-    console.log(
-      `factorio-docs\n\nCommands:\n  versions\n  generate --target <stable|experimental|latest|x.y.z>\n  generate-last5 --channel <stable|experimental|latest>\n  generate-all\n`,
-    );
+    console.log(`factorio-docs\n\nCommands:\n  versions\n  generate --target <stable|latest|x.y.z>\n  generate-last5 --channel <stable|latest>\n  generate-all\n`);
     process.exit(0);
   }
 
@@ -270,11 +247,7 @@ async function main() {
 
   if (cmd === "generate-last5") {
     const channel = String(flags.get("channel") ?? "stable") as Channel;
-    if (
-      channel !== "stable" &&
-      channel !== "experimental" &&
-      channel !== "latest"
-    ) {
+    if (channel !== "stable" && channel !== "latest") {
       throw new Error(`Invalid --channel: ${channel}`);
     }
     await cmdGenerateLast5(channel);

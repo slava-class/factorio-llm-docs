@@ -7,15 +7,15 @@ run = "bun tools/factorio-docs.ts versions"
 
 [tasks.generate]
 # Usage: mise run generate -- <target>
-# target: latest | stable | experimental | <x.y.z>
+# target: latest | stable | <x.y.z>
 run = "bun tools/factorio-docs.ts generate --target ${1:-latest}"
 
 [tasks.generate-last5]
 # Usage: mise run generate-last5 -- <channel>
-# channel: stable | experimental | latest
+# channel: stable | latest
 run = "bun tools/factorio-docs.ts generate-last5 --channel ${1:-stable}"
 
 [tasks.generate-all]
 # Usage: mise run generate-all
-# Generates stable + experimental + newest 5 (deduped), then rebuilds llm-docs/index.html.
+# Generates stable + latest + newest 5 (deduped), then rebuilds llm-docs/index.html.
 run = "bun tools/factorio-docs.ts generate-all && bun tools/build-site.ts && bun tools/site-index.ts"

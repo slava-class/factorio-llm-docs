@@ -39,3 +39,11 @@ run = "bun tools/factorio-docs.ts fetch-input --target ${FACTORIO_SMOKE_VERSION:
 # Usage: mise run smoke-clean -- <x.y.z>
 # Removes local smoke output for the given version.
 run = "rm -rf .work/factorio-api-input/${1:-${FACTORIO_SMOKE_VERSION:-2.0.72}}/.smoke-out"
+
+[tasks.docs]
+# Usage:
+# - `mise run docs -- versions`
+# - `mise run docs -- search "LuaEntity" --version 2.0.72`
+# - `mise run docs -- get "<chunkId>" --version 2.0.72`
+# - `mise run docs -- open "runtime/classes/LuaEntity.md" --version 2.0.72`
+run = "bun tools/search.ts"

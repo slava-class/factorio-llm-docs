@@ -57,3 +57,18 @@ The smoke test leaves this output directory in place for inspection. To clean it
 Smoke test source:
 
 - `tests/smoke.test.ts`
+
+## Local Docs CLI (Search / Get / Open)
+
+This repo includes a small CLI for querying the generated corpus under `llm-docs/`.
+
+Entrypoint (recommended):
+
+- `mise run docs -- versions`
+- `mise run docs -- search "<query>" [--version <x.y.z>] [--limit <n>] [--stage runtime,prototype,auxiliary] [--kind <kinds>] [--name <names>] [--member <members>]`
+- `mise run docs -- get "<chunkId>" [--version <x.y.z>]`
+- `mise run docs -- open "<relPath>" [--version <x.y.z>]`
+
+Implementation:
+
+- `tools/search.ts`

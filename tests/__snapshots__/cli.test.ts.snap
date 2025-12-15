@@ -1,0 +1,126 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`cli: versions (text + json) 1`] = `
+"1.0.0
+2.0.0
+"
+`;
+
+exports[`cli: versions (text + json) 2`] = `
+{
+  "root": "<ROOT>",
+  "versions": [
+    "1.0.0",
+    "2.0.0",
+  ],
+}
+`;
+
+exports[`cli: search supports -- end-of-flags 1`] = `
+"Using version: 1.0.0
+"
+`;
+
+exports[`cli: search supports -- end-of-flags 2`] = `
+"2	runtime	class_method	1.0.0/runtime/class/Foo#bar	runtime/classes/Foo.md#bar
+  # Foo.bar (method) Does bar. Also contains --weird marker.
+"
+`;
+
+exports[`cli: search --json 1`] = `
+{
+  "hits": [
+    {
+      "id": "1.0.0/runtime/class/Foo",
+      "kind": "class",
+      "name": "Foo",
+      "relPath": "runtime/classes/Foo.md",
+      "score": 34,
+      "snippet": "# Foo Foo class.",
+      "stage": "runtime",
+    },
+    {
+      "anchor": "bar",
+      "id": "1.0.0/runtime/class/Foo#bar",
+      "kind": "class_method",
+      "member": "bar",
+      "name": "Foo",
+      "relPath": "runtime/classes/Foo.md",
+      "score": 32,
+      "snippet": "# Foo.bar (method) Does bar. Also contains --weird marker.",
+      "stage": "runtime",
+    },
+    {
+      "anchor": "baz",
+      "id": "1.0.0/runtime/class/Foo#baz",
+      "kind": "class_method",
+      "member": "baz",
+      "name": "Foo",
+      "relPath": "runtime/classes/Foo.md",
+      "score": 32,
+      "snippet": "# Foo.baz (method) Baz.",
+      "stage": "runtime",
+    },
+  ],
+  "limit": 10,
+  "query": "foo",
+  "root": "<ROOT>",
+  "version": "1.0.0",
+}
+`;
+
+exports[`cli: get + open by chunk id + symbols key 1`] = `
+"Using version: 1.0.0
+"
+`;
+
+exports[`cli: get + open by chunk id + symbols key 2`] = `
+"{
+  "id": "1.0.0/runtime/class/Foo#bar",
+  "version": "1.0.0",
+  "stage": "runtime",
+  "kind": "class_method",
+  "name": "Foo",
+  "member": "bar",
+  "relPath": "runtime/classes/Foo.md",
+  "anchor": "bar",
+  "text": "# Foo.bar (method)\\n\\nDoes bar. Also contains --weird marker.\\n"
+}
+"
+`;
+
+exports[`cli: get + open by chunk id + symbols key 3`] = `
+"Using version: 1.0.0
+"
+`;
+
+exports[`cli: get + open by chunk id + symbols key 4`] = `
+"### bar
+
+Does bar. Also contains --weird marker.
+"
+`;
+
+exports[`cli: get + open by chunk id + symbols key 5`] = `
+"Using version: 1.0.0
+"
+`;
+
+exports[`cli: get + open by chunk id + symbols key 6`] = `
+"### bar
+
+Does bar. Also contains --weird marker.
+"
+`;
+
+exports[`cli: get + open by chunk id + symbols key 7`] = `
+"Using version: 1.0.0
+"
+`;
+
+exports[`cli: get + open by chunk id + symbols key 8`] = `
+"### bar
+
+Does bar. Also contains --weird marker.
+"
+`;

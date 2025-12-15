@@ -12,22 +12,24 @@ function printHelp() {
   console.log(`factorio-llm-docs search CLI
 
 Usage:
-  bun tools/search.ts <command> [args] [--version <x.y.z>] [--root <dir>]
+  bun tools/search.ts <command> [args] [--version <x.y.z>] [--root <dir>] [--]
 
 Commands:
   search <query>        Search chunks.jsonl
-  get <id>              Fetch one chunk by id (not implemented yet)
-  open <id|relPath>     Print markdown for a chunk/page (not implemented yet)
+  get <id>              Fetch one chunk by id (JSON)
+  open <id|relPath>     Print markdown for a chunk/page (chunk id or relPath[#anchor]; also supports symbols.json keys)
   versions              List versions under llm-docs/
 
 Options:
   --version <x.y.z>     Version under llm-docs/ (default: latest present)
   --root <dir>          Docs root (default: ./llm-docs)
+  --json                search/versions: emit machine-readable JSON
   --limit <n>           search: max hits (default: 10)
   --stage <stages>      search: comma-separated (runtime,prototype,auxiliary)
   --kind <kinds>        search: comma-separated (class_method,event,...)
   --name <names>        search: comma-separated (LuaEntity,EntityPrototype,...)
   --member <members>    search: comma-separated (clone,set_tiles,...)
+  --                    End of flags (treat remaining args as positional)
   -h, --help            Show help
 `);
 }
@@ -36,13 +38,18 @@ function parseArgs(argv: string[]) {
   const flags = new Map<string, string | boolean>();
   const positionals: string[] = [];
 
+  let endOfFlags = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
+    if (a === "--") {
+      endOfFlags = true;
+      continue;
+    }
     if (a === "--help" || a === "-h") {
       flags.set("help", true);
       continue;
     }
-    if (a.startsWith("--")) {
+    if (!endOfFlags && a.startsWith("--")) {
       const key = a.slice(2);
       const next = argv[i + 1];
       if (next != null && !next.startsWith("-")) {
@@ -152,6 +159,73 @@ async function findChunkById(chunksPath: string, id: string) {
   return null;
 }
 
+function isJsonFlag(value: string | boolean | undefined) {
+  return value === true || value === "true" || value === "1";
+}
+
+function looksLikeChunkId(s: string) {
+  return /^\d+\.\d+\.\d+\/.+/.test(s);
+}
+
+function githubSlugBase(input: string) {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/[`~!@#$%^&*()+={}\[\]|\\:;"'<>,.?/]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function extractMarkdownSectionByAnchor(markdown: string, anchor: string) {
+  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+  const anchorTrimmed = anchor.trim();
+  if (!anchorTrimmed) return null;
+
+  let startIdx = -1;
+  let startLevel = 0;
+  const slugCounts = new Map<string, number>();
+
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^(#{1,6})\s+(.+?)\s*$/.exec(lines[i] ?? "");
+    if (!m) continue;
+    const level = m[1]!.length;
+    const heading = m[2]!.trim();
+
+    const base = githubSlugBase(heading);
+    const nextCount = (slugCounts.get(base) ?? 0) + 1;
+    slugCounts.set(base, nextCount);
+    const slug = base ? (nextCount === 1 ? base : `${base}-${nextCount - 1}`) : "";
+
+    if (heading === anchorTrimmed || slug === anchorTrimmed) {
+      startIdx = i;
+      startLevel = level;
+      break;
+    }
+  }
+
+  if (startIdx === -1) return null;
+
+  let endIdx = lines.length;
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    const m = /^(#{1,6})\s+/.exec(lines[i] ?? "");
+    if (!m) continue;
+    const level = m[1]!.length;
+    if (level <= startLevel) {
+      endIdx = i;
+      break;
+    }
+  }
+
+  const out = lines.slice(startIdx, endIdx).join("\n").trimEnd();
+  return out.length ? out + "\n" : null;
+}
+
+function writeStdout(text: string) {
+  const out = text.endsWith("\n") ? text : text + "\n";
+  process.stdout.write(out);
+}
+
 async function main() {
   const cwd = process.cwd();
   const { cmd, positionals, flags } = parseArgs(Bun.argv.slice(2));
@@ -167,10 +241,15 @@ async function main() {
   }
 
   const root = resolveDocsRoot(cwd, flags.get("root") ? String(flags.get("root")) : undefined);
+  const json = isJsonFlag(flags.get("json") as any);
 
   if (command === "versions") {
     const versions = await listVersions(root);
     if (!versions.length) throw new Error(`No versions found under: ${root}`);
+    if (json) {
+      console.log(JSON.stringify({ root, versions }, null, 2));
+      return;
+    }
     for (const v of versions) console.log(v);
     return;
   }
@@ -182,6 +261,10 @@ async function main() {
   const versionFlag = flags.get("version");
   const selectedVersion = typeof versionFlag === "string" ? versionFlag : latest;
   const versionDir = await resolveVersionDir(root, selectedVersion);
+
+  if (!json) {
+    console.error(`Using version: ${selectedVersion}`);
+  }
 
   const limitFlag = flags.get("limit");
   const limit = limitFlag == null ? 10 : Number(limitFlag);
@@ -206,6 +289,14 @@ async function main() {
     const abs = path.join(versionDir, relPath);
     if (!existsSync(abs)) throw new Error(`Markdown not found: ${abs}`);
     return abs;
+  }
+
+  function parseRelPathAndAnchor(s: string) {
+    const hashIdx = s.indexOf("#");
+    if (hashIdx === -1) return { relPath: s, anchor: undefined as string | undefined };
+    const relPath = s.slice(0, hashIdx);
+    const anchor = s.slice(hashIdx + 1);
+    return { relPath, anchor: anchor || undefined };
   }
 
   switch (command) {
@@ -275,6 +366,11 @@ async function main() {
 
       if (!hits.length) return;
 
+      if (json) {
+        console.log(JSON.stringify({ root, version: selectedVersion, query, limit, hits }, null, 2));
+        return;
+      }
+
       for (const h of hits) {
         const loc = h.relPath ? `${h.relPath}${h.anchor ? `#${h.anchor}` : ""}` : "(no relPath)";
         console.log(`${h.score}\t${h.stage}\t${h.kind}\t${h.id}\t${loc}`);
@@ -297,20 +393,39 @@ async function main() {
     case "open": {
       const target = positionals[0]?.trim();
       if (!target) throw new Error("Usage: open <id|relPath>");
-      if (target.includes("/") || target.endsWith(".md")) {
-        const abs = resolveMarkdownPathFromRelPath(target);
-        console.log(await readFile(abs, "utf8"));
+      if ((target.includes("/") || target.endsWith(".md") || target.includes("#")) && !looksLikeChunkId(target)) {
+        const { relPath, anchor } = parseRelPathAndAnchor(target);
+        const abs = resolveMarkdownPathFromRelPath(relPath);
+        const md = await readFile(abs, "utf8");
+        const anchored = anchor ? extractMarkdownSectionByAnchor(md, anchor) : null;
+        writeStdout(anchored ?? md);
         return;
       }
       if (symbols && target in symbols) {
-        const entry = (symbols as any)[target] as { relPath: string };
+        const entry = (symbols as any)[target] as { relPath: string; anchor?: string };
         const abs = resolveMarkdownPathFromRelPath(entry.relPath);
-        console.log(await readFile(abs, "utf8"));
+        const md = await readFile(abs, "utf8");
+        const anchored = entry.anchor ? extractMarkdownSectionByAnchor(md, entry.anchor) : null;
+        writeStdout(anchored ?? md);
         return;
       }
-      throw new Error(`Not implemented: open by id (${target})`);
-      void target;
-      throw new Error("Not implemented: open");
+
+      const chunksPath = path.join(versionDir, "chunks.jsonl");
+      if (!existsSync(chunksPath)) throw new Error(`Missing chunks.jsonl: ${chunksPath}`);
+
+      const chunk = await findChunkById(chunksPath, target);
+      if (!chunk) throw new Error(`Chunk not found: ${target}`);
+
+      if (!chunk.relPath) {
+        writeStdout(chunk.text);
+        return;
+      }
+
+      const abs = resolveMarkdownPathFromRelPath(chunk.relPath);
+      const md = await readFile(abs, "utf8");
+      const anchored = chunk.anchor ? extractMarkdownSectionByAnchor(md, chunk.anchor) : null;
+      writeStdout(anchored ?? chunk.text ?? md);
+      return;
     }
     default: {
       const _exhaustive: never = command;

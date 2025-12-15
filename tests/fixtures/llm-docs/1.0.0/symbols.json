@@ -1,0 +1,18 @@
+{
+  "runtime:class:Foo": {
+    "id": "1.0.0/runtime/class/Foo",
+    "stage": "runtime",
+    "kind": "class",
+    "name": "Foo",
+    "relPath": "runtime/classes/Foo.md"
+  },
+  "runtime:method:Foo.bar": {
+    "id": "1.0.0/runtime/class/Foo#bar",
+    "stage": "runtime",
+    "kind": "class_method",
+    "name": "Foo",
+    "member": "bar",
+    "relPath": "runtime/classes/Foo.md",
+    "anchor": "bar"
+  }
+}

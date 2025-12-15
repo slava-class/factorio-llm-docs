@@ -45,3 +45,13 @@ For best results, retrieve narrowly-scoped chunks first:
 - prototype property: `.../prototype/prototype/<Prototype>#<property>`
 
 If you need context, also pull the corresponding symbol page from `relPath` (under `llm-docs/<version>/`).
+
+## Local Search CLI (Optional)
+
+This export pairs well with the `factorio-llm-docs` repo’s local CLI (`tools/search.ts`) which supports:
+
+- `versions`, `search`, `get <chunkId>` (JSON), `open <chunkId|relPath|symbolKey>`
+- `--json` output for `versions` and `search`
+- `--` end-of-flags for queries/paths that start with `--`
+
+If you’re in a repo that includes a wrapper command, prefer it (for example `mise run docs -- ...`).

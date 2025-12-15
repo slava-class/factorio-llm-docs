@@ -34,10 +34,22 @@ GitHub Pages (`llm-docs/index.html` and friends) is primarily for humans.
 
 For AI agents / tooling:
 
-- Prefer `llm-docs/<version>/chunks.jsonl` for RAG ingestion (each line includes `id`, `stage`, `kind`, `name`, `text`, and `relPath`).
+- Prefer `llm-docs/<version>/chunks.jsonl` for RAG ingestion (chunked text + stable metadata).
 - Prefer `llm-docs/<version>/*.md` for “paste into context” or when you want a readable canonical source.
 - Use `llm-docs/<version>/SEARCH.md` as the starting jump list when you don’t know which API surface you need.
 - See `llm-docs/AGENTS.md` for agent-oriented notes and retrieval tips.
+
+### `chunks.jsonl` schema contract
+
+Each line in `llm-docs/<version>/chunks.jsonl` is a JSON object with:
+
+- Required: `id` (string), `version` (string), `stage` (runtime|prototype|auxiliary), `kind` (string), `name` (string), `text` (string)
+- Optional: `member` (string), `relPath` (string, relative to `llm-docs/<version>/`), `anchor` (string)
+
+Notes:
+
+- `id` is version-scoped and typically starts with `<version>/...` (treat it as an opaque identifier; don’t assume cross-version stability).
+- If present, `relPath` + `anchor` locates the canonical Markdown section for the chunk (e.g. `runtime/classes/LuaEntity.md#clone`).
 
 ## Tooling Roadmap
 

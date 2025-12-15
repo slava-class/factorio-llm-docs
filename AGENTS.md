@@ -66,8 +66,11 @@ Entrypoint (recommended):
 
 - `mise run docs -- versions`
 - `mise run docs -- search "<query>" [--version <x.y.z>] [--limit <n>] [--stage runtime,prototype,auxiliary] [--kind <kinds>] [--name <names>] [--member <members>]`
+- `mise run docs -- search "<query>" --json`
 - `mise run docs -- get "<chunkId>" [--version <x.y.z>]`
-- `mise run docs -- open "<relPath>" [--version <x.y.z>]`
+- `mise run docs -- open "<chunkId|relPath|symbolKey>" [--version <x.y.z>]`
+- If your query/path starts with `--`, use end-of-flags:
+  - `mise run docs -- search -- "--weird"`
 
 Implementation:
 

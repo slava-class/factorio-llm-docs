@@ -26,6 +26,16 @@ type ChunkRecord = {
   text: string;
 };
 
+type SymbolEntry = {
+  id: string;
+  stage: ChunkRecord["stage"];
+  kind: ChunkRecord["kind"];
+  name: ChunkRecord["name"];
+  member?: ChunkRecord["member"];
+  relPath: string;
+  anchor?: string;
+};
+
 function toTitleCaseFromSlug(slug: string) {
   return slug
     .split(/[-_]+/g)
@@ -528,6 +538,11 @@ async function main() {
     stats.counts.chunks++;
   }
 
+  const symbols = new Map<string, SymbolEntry>();
+  function addSymbol(key: string, entry: SymbolEntry) {
+    symbols.set(key, entry);
+  }
+
   async function writeSymbolMarkdown(
     stage: Stage | "auxiliary",
     kind: string,
@@ -578,6 +593,13 @@ async function main() {
       relPath: toVersionRelPath(rel),
       text: md,
     });
+    addSymbol(`${stage}:index:${kind}`, {
+      id: `${detectedVersion}/${stage}/${kind}/index`,
+      stage,
+      kind: `${kind}_index`,
+      name: title,
+      relPath: toVersionRelPath(rel),
+    });
   }
 
   function mdFieldList(items: Array<{ name: string; type?: string; optional?: boolean; description?: string }>) {
@@ -603,6 +625,13 @@ async function main() {
         name: base,
         relPath: toVersionRelPath(outRel),
         text: `# ${title}\n\n${md}`,
+      });
+      addSymbol(`auxiliary:page:${base}`, {
+        id: `${detectedVersion}/auxiliary/${base}`,
+        stage: "auxiliary",
+        kind: "auxiliary",
+        name: base,
+        relPath: toVersionRelPath(outRel),
       });
     }
   }
@@ -659,6 +688,15 @@ async function main() {
             anchor: a.name,
             text: `# ${c.name}.${a.name} (attribute)\n\n- Read: \`${readType}\`\n- Write: \`${writeType}\`\n- Optional: \`${String(!!a.optional)}\`\n\n${a.description ?? ""}\n`,
           });
+          addSymbol(`runtime:attribute:${c.name}.${a.name}`, {
+            id: `${detectedVersion}/runtime/class/${c.name}#${a.name}`,
+            stage: "runtime",
+            kind: "class_attribute",
+            name: c.name,
+            member: a.name,
+            relPath: toVersionRelPath(outRel),
+            anchor: a.name,
+          });
         }
       }
 
@@ -693,6 +731,15 @@ async function main() {
             anchor: m.name,
             text: `# ${c.name}.${m.name} (method)\n\n\`\`\`lua\n${sig}\n\`\`\`\n\n${m.description ?? ""}\n`,
           });
+          addSymbol(`runtime:method:${c.name}.${m.name}`, {
+            id: `${detectedVersion}/runtime/class/${c.name}#${m.name}`,
+            stage: "runtime",
+            kind: "class_method",
+            name: c.name,
+            member: m.name,
+            relPath: toVersionRelPath(outRel),
+            anchor: m.name,
+          });
         }
       }
 
@@ -705,6 +752,13 @@ async function main() {
         name: c.name,
         relPath: toVersionRelPath(outRel),
         text: `# ${c.name}\n\n${c.description ?? ""}\n`,
+      });
+      addSymbol(`runtime:class:${c.name}`, {
+        id: `${detectedVersion}/runtime/class/${c.name}`,
+        stage: "runtime",
+        kind: "class",
+        name: c.name,
+        relPath: toVersionRelPath(outRel),
       });
     }
 
@@ -722,6 +776,13 @@ async function main() {
         name: concept.name,
         relPath: toVersionRelPath(outRel),
         text: md,
+      });
+      addSymbol(`runtime:concept:${concept.name}`, {
+        id: `${detectedVersion}/runtime/concept/${concept.name}`,
+        stage: "runtime",
+        kind: "concept",
+        name: concept.name,
+        relPath: toVersionRelPath(outRel),
       });
     }
 
@@ -749,6 +810,13 @@ async function main() {
         relPath: toVersionRelPath(outRel),
         text: md,
       });
+      addSymbol(`runtime:event:${event.name}`, {
+        id: `${detectedVersion}/runtime/event/${event.name}`,
+        stage: "runtime",
+        kind: "event",
+        name: event.name,
+        relPath: toVersionRelPath(outRel),
+      });
     }
 
     for (const def of runtimeObj.defines ?? []) {
@@ -771,6 +839,15 @@ async function main() {
             anchor: v.name,
             text: `# defines.${def.name}.${v.name}\n\n${v.description ?? ""}\n`,
           });
+          addSymbol(`runtime:define_value:defines.${def.name}.${v.name}`, {
+            id: `${detectedVersion}/runtime/define/${def.name}#${v.name}`,
+            stage: "runtime",
+            kind: "define_value",
+            name: `defines.${def.name}`,
+            member: v.name,
+            relPath: toVersionRelPath(outRel),
+            anchor: v.name,
+          });
         }
       }
       await writeSymbolMarkdown("runtime", "define", def.name, outRel, md, "runtime-api.json");
@@ -782,6 +859,13 @@ async function main() {
         name: `defines.${def.name}`,
         relPath: toVersionRelPath(outRel),
         text: md,
+      });
+      addSymbol(`runtime:define:defines.${def.name}`, {
+        id: `${detectedVersion}/runtime/define/${def.name}`,
+        stage: "runtime",
+        kind: "define",
+        name: `defines.${def.name}`,
+        relPath: toVersionRelPath(outRel),
       });
     }
 
@@ -810,6 +894,13 @@ async function main() {
         relPath: toVersionRelPath(outRel),
         text: md,
       });
+      addSymbol(`runtime:global_function:${f.name}`, {
+        id: `${detectedVersion}/runtime/global_function/${f.name}`,
+        stage: "runtime",
+        kind: "global_function",
+        name: f.name,
+        relPath: toVersionRelPath(outRel),
+      });
     }
 
     for (const o of runtimeObj.global_objects ?? []) {
@@ -826,6 +917,13 @@ async function main() {
         name: o.name,
         relPath: toVersionRelPath(outRel),
         text: md,
+      });
+      addSymbol(`runtime:global_object:${o.name}`, {
+        id: `${detectedVersion}/runtime/global_object/${o.name}`,
+        stage: "runtime",
+        kind: "global_object",
+        name: o.name,
+        relPath: toVersionRelPath(outRel),
       });
     }
   }
@@ -877,6 +975,15 @@ async function main() {
             anchor: prop.name,
             text: `# ${p.name}.${prop.name} (property)\n\n- Type: \`${typeToString(prop.type)}\`\n- Optional: \`${String(!!prop.optional)}\`\n\n${prop.description ?? ""}\n`,
           });
+          addSymbol(`prototype:property:${p.name}.${prop.name}`, {
+            id: `${detectedVersion}/prototype/prototype/${p.name}#${prop.name}`,
+            stage: "prototype",
+            kind: "prototype_property",
+            name: p.name,
+            member: prop.name,
+            relPath: toVersionRelPath(outRel),
+            anchor: prop.name,
+          });
         }
       }
 
@@ -889,6 +996,13 @@ async function main() {
         name: p.name,
         relPath: toVersionRelPath(outRel),
         text: `# ${p.name}\n\n${p.description ?? ""}\n`,
+      });
+      addSymbol(`prototype:prototype:${p.name}`, {
+        id: `${detectedVersion}/prototype/prototype/${p.name}`,
+        stage: "prototype",
+        kind: "prototype",
+        name: p.name,
+        relPath: toVersionRelPath(outRel),
       });
     }
 
@@ -919,6 +1033,15 @@ async function main() {
             anchor: prop.name,
             text: `# ${t.name}.${prop.name} (property)\n\n- Type: \`${typeToString(prop.type)}\`\n- Optional: \`${String(!!prop.optional)}\`\n\n${prop.description ?? ""}\n`,
           });
+          addSymbol(`prototype:type_property:${t.name}.${prop.name}`, {
+            id: `${detectedVersion}/prototype/type/${t.name}#${prop.name}`,
+            stage: "prototype",
+            kind: "type_property",
+            name: t.name,
+            member: prop.name,
+            relPath: toVersionRelPath(outRel),
+            anchor: prop.name,
+          });
         }
       }
 
@@ -931,6 +1054,13 @@ async function main() {
         name: t.name,
         relPath: toVersionRelPath(outRel),
         text: md,
+      });
+      addSymbol(`prototype:type:${t.name}`, {
+        id: `${detectedVersion}/prototype/type/${t.name}`,
+        stage: "prototype",
+        kind: "type",
+        name: t.name,
+        relPath: toVersionRelPath(outRel),
       });
     }
 
@@ -954,6 +1084,15 @@ async function main() {
             anchor: v.name,
             text: `# defines.${def.name}.${v.name}\n\n${v.description ?? ""}\n`,
           });
+          addSymbol(`prototype:define_value:defines.${def.name}.${v.name}`, {
+            id: `${detectedVersion}/prototype/define/${def.name}#${v.name}`,
+            stage: "prototype",
+            kind: "define_value",
+            name: `defines.${def.name}`,
+            member: v.name,
+            relPath: toVersionRelPath(outRel),
+            anchor: v.name,
+          });
         }
       }
       await writeSymbolMarkdown("prototype", "define", def.name, outRel, md, "prototype-api.json");
@@ -966,6 +1105,13 @@ async function main() {
         relPath: toVersionRelPath(outRel),
         text: md,
       });
+      addSymbol(`prototype:define:defines.${def.name}`, {
+        id: `${detectedVersion}/prototype/define/${def.name}`,
+        stage: "prototype",
+        kind: "define",
+        name: `defines.${def.name}`,
+        relPath: toVersionRelPath(outRel),
+      });
     }
   }
 
@@ -975,6 +1121,11 @@ async function main() {
       else resolveDone();
     });
   });
+
+  const symbolsObj: Record<string, SymbolEntry> = {};
+  const sortedKeys = Array.from(symbols.keys()).sort((a, b) => a.localeCompare(b));
+  for (const k of sortedKeys) symbolsObj[k] = symbols.get(k)!;
+  await writeFile(path.join(outVersionAbs, "symbols.json"), JSON.stringify(symbolsObj, null, 2) + "\n", "utf8");
 
   // Make the export self-contained for auxiliary references.
   if (runtimeJsonText) {

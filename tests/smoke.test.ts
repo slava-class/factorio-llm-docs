@@ -58,6 +58,15 @@ test("smoke: generator runs against cached Factorio inputs", async () => {
   expect(readme).toContain(version);
   expect(readme).toMatchSnapshot();
 
+  const symbols = JSON.parse(await readFile(path.join(outVersionDir, "symbols.json"), "utf8")) as any;
+  expect(symbols["runtime:class:LuaEntity"]).toEqual({
+    id: `${version}/runtime/class/LuaEntity`,
+    stage: "runtime",
+    kind: "class",
+    name: "LuaEntity",
+    relPath: "runtime/classes/LuaEntity.md",
+  });
+
   const search = await readFile(path.join(outVersionDir, "SEARCH.md"), "utf8");
   expect(search.split("\n").slice(0, 40).join("\n")).toMatchSnapshot();
 

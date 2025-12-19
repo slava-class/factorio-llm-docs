@@ -77,3 +77,25 @@ test("cli: get + open by chunk id + symbols key", async () => {
   expect(openSymbol.stderr).toMatchSnapshot();
   expect(openSymbol.stdout).toMatchSnapshot();
 });
+
+test("cli: call + open --call", async () => {
+  const id = "1.0.0/runtime/class/Foo#bar";
+
+  const callById = await runCli(["call", "--root", fixturesRootRel, "--version", "1.0.0", id]);
+  expect(callById.code, callById.stderr).toBe(0);
+  expect(callById.stderr).toMatchSnapshot();
+  expect(callById.stdout).toMatchSnapshot();
+
+  const callBySymbol = await runCli([
+    "open",
+    "--call",
+    "--root",
+    fixturesRootRel,
+    "--version",
+    "1.0.0",
+    "runtime:method:Foo.bar",
+  ]);
+  expect(callBySymbol.code, callBySymbol.stderr).toBe(0);
+  expect(callBySymbol.stderr).toMatchSnapshot();
+  expect(callBySymbol.stdout).toMatchSnapshot();
+});

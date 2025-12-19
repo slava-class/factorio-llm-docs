@@ -45,6 +45,8 @@ Each line contains metadata plus a chunk of text, roughly:
 - `version`, `stage` (`runtime`/`prototype`/`auxiliary`), `kind`, `name`, optional `member`.
 - `anchor`: when applicable.
 - `relPath`: points at the Markdown source page (version-root-relative, e.g. `runtime/classes/LuaEntity.md`).
+- `call`: canonical call snippet when available (e.g. `surface.set_tiles(tiles, true)` or `surface.spill_item_stack{ position=..., stack=... }`).
+- `takes_table` / `table_optional`: call-convention flags from the upstream JSON docs (Factorio’s `format.takes_table` / `format.table_optional`).
 - `text`: the chunk content (usually includes a heading like `# LuaEntity.clone (method)`).
 
 This is already good enough to build robust retrieval tooling on top of.
@@ -65,6 +67,7 @@ This repo includes a small CLI (`tools/search.ts`) that can query the corpus and
 - `search <query>`: ranked results with snippet + IDs.
 - `get <id>`: return one chunk by exact ID.
 - `open <id|path>`: print Markdown (or open file) for interactive browsing.
+- `call <id|symbolKey>`: print canonical call form + call convention metadata (for methods/functions).
 - `versions`: list versions present under `llm-docs/`.
 
 #### `related` (Documented, Not Implemented Yet)

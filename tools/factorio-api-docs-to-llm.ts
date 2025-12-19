@@ -24,6 +24,9 @@ type ChunkRecord = {
   member?: string;
   relPath?: string;
   anchor?: string;
+  call?: string;
+  takes_table?: boolean;
+  table_optional?: boolean;
   text: string;
 };
 
@@ -225,13 +228,87 @@ function typeToString(t: unknown): string {
   }
 }
 
-function renderSignature(name: string, parameters: any[] | undefined, returnValues: any[] | undefined) {
-  const params = (parameters ?? []).map((p) => {
+function sortByOrder<T>(items: T[] | undefined) {
+  return (items ?? []).slice().sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0));
+}
+
+function normalizeCallFormat(format: any | undefined) {
+  return {
+    takes_table: !!format?.takes_table,
+    table_optional: !!format?.table_optional,
+  };
+}
+
+function isBooleanType(t: any) {
+  if (t === "boolean") return true;
+  if (!t || typeof t !== "object") return false;
+  if (t.complex_type !== "union") return false;
+  return Array.isArray(t.options) && t.options.some((o: any) => o === "boolean");
+}
+
+function renderArgExpr(p: any) {
+  if (isBooleanType(p?.type)) return "true";
+
+  const typeName = typeof p?.type === "string" ? p.type : null;
+  if (p?.name === "name" && typeName && typeName.endsWith("ID")) return JSON.stringify("name");
+
+  if (p?.type && typeof p.type === "object" && p.type.complex_type === "literal") {
+    return JSON.stringify(p.type.value);
+  }
+
+  return String(p?.name ?? "value");
+}
+
+function methodReceiverVar(className: string) {
+  if (className === "LuaControl") return "player";
+  if (className === "LuaPlayer") return "player";
+  if (className === "LuaSurface") return "surface";
+  if (className === "LuaEntity") return "entity";
+  if (className === "LuaForce") return "force";
+  if (className === "LuaGameScript") return "game";
+
+  const base = className.startsWith("Lua") ? className.slice(3) : className;
+  if (!base) return "obj";
+  return base.slice(0, 1).toLowerCase() + base.slice(1);
+}
+
+function renderCallAs(receiver: string | null, name: string, parameters: any[] | undefined, format: any | undefined) {
+  const fmt = normalizeCallFormat(format);
+  const params = sortByOrder(parameters);
+  const required = params.filter((p: any) => !p?.optional);
+
+  const callee = receiver ? `${receiver}.${name}` : name;
+
+  if (fmt.takes_table) {
+    let chosen = required;
+    if (!chosen.length && params.length) {
+      const byRaise = params.find((p: any) => typeof p?.name === "string" && /^raise_/.test(p.name));
+      chosen = byRaise ? [byRaise] : [params[0]!];
+    }
+    const fields = chosen.map((p: any) => `${p.name}=${renderArgExpr(p)}`).join(", ");
+    return `${callee}{${fields ? ` ${fields} ` : ""}}`;
+  }
+
+  const args: string[] = required.map((p: any) => renderArgExpr(p));
+  if (required.length > 0 && required.length <= 2) {
+    const maxReqOrder = Math.max(...required.map((p: any) => p?.order ?? 0));
+    const nextOpt = params.find((p: any) => (p?.order ?? 0) > maxReqOrder && p?.optional);
+    if (nextOpt) args.push(renderArgExpr(nextOpt));
+  }
+  const argsStr = args.join(", ");
+  return `${callee}(${argsStr})`;
+}
+
+function renderSignature(name: string, parameters: any[] | undefined, returnValues: any[] | undefined, format?: any) {
+  const fmt = normalizeCallFormat(format);
+  const params = sortByOrder(parameters).map((p) => {
     const optional = p.optional ? "?" : "";
     return `${p.name}${optional}: ${typeToString(p.type)}`;
   });
-  const rets = (returnValues ?? []).map((r) => `${typeToString(r.type)}${r.optional ? "?" : ""}`);
-  return `${name}(${params.join(", ")})${rets.length ? ` -> ${rets.join(", ")}` : ""}`;
+  const rets = sortByOrder(returnValues).map((r) => `${typeToString(r.type)}${r.optional ? "?" : ""}`);
+  const ret = rets.length ? ` -> ${rets.join(", ")}` : "";
+  if (fmt.takes_table) return `${name}{${params.length ? ` ${params.join(", ")} ` : ""}}${ret}`;
+  return `${name}(${params.join(", ")})${ret}`;
 }
 
 function convertInternalLinks(md: string, fromRelPath: string, resolve: (target: string) => ResolveResult | null) {
@@ -708,8 +785,13 @@ async function main() {
         md += mdSection("Methods");
         for (const m of methods) {
           md += `\n### ${m.name}\n\n`;
-          const sig = renderSignature(`${c.name}.${m.name}`, m.parameters, m.return_values);
-          md += `\n\`\`\`lua\n${sig}\n\`\`\`\n\n`;
+          const callFormat = normalizeCallFormat(m.format);
+          const receiver = methodReceiverVar(c.name);
+          const callAs = renderCallAs(receiver, m.name, m.parameters, m.format);
+          const sig = renderSignature(`${c.name}.${m.name}`, m.parameters, m.return_values, m.format);
+          md += `\n\`\`\`lua\n${sig}\n\`\`\`\n`;
+          md += `\n#### Call As\n\n\`\`\`lua\n${callAs}\n\`\`\`\n`;
+          md += `\n#### Call Convention\n\n- \`takes_table\`: \`${String(callFormat.takes_table)}\`\n- \`table_optional\`: \`${String(callFormat.table_optional)}\`\n\n`;
           if (m.description) md += `${m.description}\n\n`;
 
           const params = (m.parameters ?? []).slice().sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
@@ -732,7 +814,10 @@ async function main() {
             member: m.name,
             relPath: toVersionRelPath(outRel),
             anchor: m.name,
-            text: `# ${c.name}.${m.name} (method)\n\n\`\`\`lua\n${sig}\n\`\`\`\n\n${m.description ?? ""}\n`,
+            call: callAs,
+            takes_table: callFormat.takes_table,
+            table_optional: callFormat.table_optional,
+            text: `# ${c.name}.${m.name} (method)\n\n\`\`\`lua\n${sig}\n\`\`\`\n\n\`\`\`lua\n${callAs}\n\`\`\`\n\n${m.description ?? ""}\n`,
           });
           addSymbol(`runtime:method:${c.name}.${m.name}`, {
             id: `${detectedVersion}/runtime/class/${c.name}#${m.name}`,
@@ -875,8 +960,12 @@ async function main() {
     for (const f of runtimeObj.global_functions ?? []) {
       stats.counts.runtime.global_functions++;
       const outRel = resolverMap.get(`runtime:${f.name}`)!.relPath;
-      const sig = renderSignature(f.name, f.parameters, f.return_values);
+      const callFormat = normalizeCallFormat(f.format);
+      const callAs = renderCallAs(null, f.name, f.parameters, f.format);
+      const sig = renderSignature(f.name, f.parameters, f.return_values, f.format);
       let md = `# ${f.name}\n\n${f.description ?? ""}\n\n\`\`\`lua\n${sig}\n\`\`\`\n`;
+      md += `\n#### Call As\n\n\`\`\`lua\n${callAs}\n\`\`\`\n`;
+      md += `\n#### Call Convention\n\n- \`takes_table\`: \`${String(callFormat.takes_table)}\`\n- \`table_optional\`: \`${String(callFormat.table_optional)}\`\n`;
       const params = (f.parameters ?? []).slice().sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
       if (params.length) md += `${mdSection("Parameters")}\n${mdFieldList(params.map((p: any) => ({ name: p.name, optional: p.optional, type: typeToString(p.type), description: p.description })))}\n`;
       const rvs = (f.return_values ?? []).slice().sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
@@ -895,6 +984,9 @@ async function main() {
         kind: "global_function",
         name: f.name,
         relPath: toVersionRelPath(outRel),
+        call: callAs,
+        takes_table: callFormat.takes_table,
+        table_optional: callFormat.table_optional,
         text: md,
       });
       addSymbol(`runtime:global_function:${f.name}`, {

@@ -89,6 +89,8 @@ export const ChunkRecordSchema = Schema.Struct({
   member: Schema.optional(Schema.String),
   relPath: Schema.optional(Schema.String),
   anchor: Schema.optional(Schema.String),
+  call: Schema.optional(Schema.String),
+  takes_table: Schema.optional(Schema.Boolean),
+  table_optional: Schema.optional(Schema.Boolean),
   text: Schema.String,
 }).annotations(preserve);
-

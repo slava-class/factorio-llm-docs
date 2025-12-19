@@ -18,12 +18,13 @@ Commands:
   search <query>        Search chunks.jsonl
   get <id>              Fetch one chunk by id (JSON)
   open <id|relPath>     Print markdown for a chunk/page (chunk id or relPath[#anchor]; also supports symbols.json keys)
+  call <id|symbolKey>   Print canonical call form metadata (chunk id or symbols.json key)
   versions              List versions under llm-docs/
 
 Options:
   --version <x.y.z>     Version under llm-docs/ (default: latest present)
   --root <dir>          Docs root (default: ./llm-docs)
-  --json                search/versions: emit machine-readable JSON
+  --json                search/versions/call: emit machine-readable JSON
   --limit <n>           search: max hits (default: 10)
   --stage <stages>      search: comma-separated (runtime,prototype,auxiliary)
   --kind <kinds>        search: comma-separated (class_method,event,...)
@@ -31,6 +32,7 @@ Options:
   --member <members>    search: comma-separated (clone,set_tiles,...)
   --open                search: open the top hit (prints markdown/text instead of the hit list)
   --print-ids           search: print only chunk ids (one per line)
+  --call                open: print call form (chunk id or symbols key only)
   --quiet               Suppress non-essential stderr output
   --                    End of flags (treat remaining args as positional)
   -h, --help            Show help
@@ -246,7 +248,7 @@ async function main() {
   }
 
   const command = cmd as Command;
-  if (!["search", "get", "open", "versions"].includes(command)) {
+  if (!["search", "get", "open", "call", "versions"].includes(command)) {
     throw new Error(`Unknown command: ${cmd}`);
   }
 
@@ -308,6 +310,25 @@ async function main() {
     const relPath = s.slice(0, hashIdx);
     const anchor = s.slice(hashIdx + 1);
     return { relPath, anchor: anchor || undefined };
+  }
+
+  async function resolveChunkIdFromTarget(target: string) {
+    if (symbols && target in symbols) return String((symbols as any)[target].id);
+    if (looksLikeChunkId(target)) return target;
+    throw new Error(`Target must be a chunk id or symbols.json key: ${target}`);
+  }
+
+  function getCallMetaFromChunk(chunk: any) {
+    const call = chunk?.call;
+    const takesTable = chunk?.takes_table;
+    const tableOptional = chunk?.table_optional;
+    if (typeof call !== "string" || !call.trim()) return null;
+    return {
+      id: String(chunk.id),
+      call: call.trim(),
+      takes_table: Boolean(takesTable),
+      table_optional: Boolean(tableOptional),
+    };
   }
 
   switch (command) {
@@ -438,6 +459,22 @@ async function main() {
     case "open": {
       const target = positionals[0]?.trim();
       if (!target) throw new Error("Usage: open <id|relPath>");
+
+      const wantCall = isTruthyFlag(flags.get("call") as any);
+      if (wantCall) {
+        const chunksPath = path.join(versionDir, "chunks.jsonl");
+        if (!existsSync(chunksPath)) throw new Error(`Missing chunks.jsonl: ${chunksPath}`);
+        const id = await resolveChunkIdFromTarget(target);
+        const chunk = await findChunkById(chunksPath, id);
+        if (!chunk) throw new Error(`Chunk not found: ${id}`);
+        const meta = getCallMetaFromChunk(chunk);
+        if (!meta) throw new Error(`No call metadata on chunk: ${id}`);
+        writeStdout(
+          `${meta.call}\n\ntakes_table=${String(meta.takes_table)} table_optional=${String(meta.table_optional)}\n`,
+        );
+        return;
+      }
+
       if ((target.includes("/") || target.endsWith(".md") || target.includes("#")) && !looksLikeChunkId(target)) {
         const { relPath, anchor } = parseRelPathAndAnchor(target);
         const abs = resolveMarkdownPathFromRelPath(relPath);
@@ -470,6 +507,28 @@ async function main() {
       const md = await readFile(abs, "utf8");
       const anchored = chunk.anchor ? extractMarkdownSectionByAnchor(md, chunk.anchor) : null;
       writeStdout(anchored ?? chunk.text ?? md);
+      return;
+    }
+    case "call": {
+      const target = positionals[0]?.trim();
+      if (!target) throw new Error("Usage: call <id|symbolKey>");
+      const chunksPath = path.join(versionDir, "chunks.jsonl");
+      if (!existsSync(chunksPath)) throw new Error(`Missing chunks.jsonl: ${chunksPath}`);
+
+      const id = await resolveChunkIdFromTarget(target);
+      const chunk = await findChunkById(chunksPath, id);
+      if (!chunk) throw new Error(`Chunk not found: ${id}`);
+      const meta = getCallMetaFromChunk(chunk);
+      if (!meta) throw new Error(`No call metadata on chunk: ${id}`);
+
+      if (json) {
+        console.log(JSON.stringify(meta, null, 2));
+        return;
+      }
+
+      writeStdout(
+        `${meta.call}\n\ntakes_table=${String(meta.takes_table)} table_optional=${String(meta.table_optional)}\n`,
+      );
       return;
     }
     default: {

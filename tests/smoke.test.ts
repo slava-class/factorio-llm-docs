@@ -71,6 +71,35 @@ test("smoke: generator runs against cached Factorio inputs", async () => {
   const luaEntity = await readFile(path.join(outVersionDir, "runtime", "classes", "LuaEntity.md"), "utf8");
   expect(luaEntity.split("\n").slice(0, 60).join("\n")).toMatchSnapshot();
 
+  const luaSurface = await readFile(path.join(outVersionDir, "runtime", "classes", "LuaSurface.md"), "utf8");
+  expect(luaSurface).toContain(
+    "LuaSurface.set_tiles(tiles: Array<Tile>, correct_tiles?: boolean, remove_colliding_entities?: boolean | \"abort_on_collision\", remove_colliding_decoratives?: boolean, raise_event?: boolean, player?: PlayerIdentification, undo_index?: uint32)",
+  );
+  expect(luaSurface).toContain("surface.set_tiles(tiles, true)");
+  expect(luaSurface).toContain(
+    "LuaSurface.find_non_colliding_position(name: EntityID, center: MapPosition, radius: double, precision: double, force_to_tile_center?: boolean) -> MapPosition?",
+  );
+  expect(luaSurface).toContain("surface.find_non_colliding_position(\"name\", center, radius, precision)");
+  expect(luaSurface).toContain(
+    "LuaSurface.spill_item_stack{ position: MapPosition, stack: ItemStackIdentification, enable_looted?: boolean, force?: ForceID, allow_belts?: boolean, max_radius?: double, use_start_position_on_failure?: boolean, drop_full_stack?: boolean } -> Array<LuaEntity>",
+  );
+  expect(luaSurface).toContain("surface.spill_item_stack{ position=position, stack=stack }");
+
+  const luaControl = await readFile(path.join(outVersionDir, "runtime", "classes", "LuaControl.md"), "utf8");
+  expect(luaControl).toContain(
+    "LuaControl.teleport(position: MapPosition, surface?: SurfaceIdentification, raise_teleported?: boolean, snap_to_grid?: boolean, build_check_type?: defines.build_check_type) -> boolean",
+  );
+  expect(luaControl).toContain("player.teleport(position, surface)");
+
+  expect(luaEntity).toContain(
+    "LuaEntity.destroy{ do_cliff_correction?: boolean, raise_destroy?: boolean, player?: PlayerIdentification, undo_index?: uint32 } -> boolean",
+  );
+  expect(luaEntity).toContain("entity.destroy{ raise_destroy=true }");
+  expect(luaEntity).toContain(
+    "LuaEntity.revive{ raise_revive?: boolean, overflow?: LuaInventory } -> Dict<string, uint32>?, LuaEntity?, LuaEntity?",
+  );
+  expect(luaEntity).toContain("entity.revive{ raise_revive=true }");
+
   const entityPrototype = await readFile(
     path.join(outVersionDir, "prototype", "prototypes", "EntityPrototype.md"),
     "utf8",

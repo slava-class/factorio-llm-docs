@@ -84,6 +84,9 @@ exports[`cli: get + open by chunk id + symbols key 2`] = `
   "member": "bar",
   "relPath": "runtime/classes/Foo.md",
   "anchor": "bar",
+  "call": "foo.bar()",
+  "takes_table": false,
+  "table_optional": false,
   "text": "# Foo.bar (method)\\n\\nDoes bar. Also contains --weird marker.\\n"
 }
 "
@@ -122,5 +125,29 @@ exports[`cli: get + open by chunk id + symbols key 8`] = `
 "### bar
 
 Does bar. Also contains --weird marker.
+"
+`;
+
+exports[`cli: call + open --call 1`] = `
+"Using version: 1.0.0
+"
+`;
+
+exports[`cli: call + open --call 2`] = `
+"foo.bar()
+
+takes_table=false table_optional=false
+"
+`;
+
+exports[`cli: call + open --call 3`] = `
+"Using version: 1.0.0
+"
+`;
+
+exports[`cli: call + open --call 4`] = `
+"foo.bar()
+
+takes_table=false table_optional=false
 "
 `;

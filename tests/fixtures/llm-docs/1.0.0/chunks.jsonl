@@ -1,3 +1,3 @@
 {"id":"1.0.0/runtime/class/Foo","version":"1.0.0","stage":"runtime","kind":"class","name":"Foo","relPath":"runtime/classes/Foo.md","text":"# Foo\n\nFoo class.\n"}
-{"id":"1.0.0/runtime/class/Foo#bar","version":"1.0.0","stage":"runtime","kind":"class_method","name":"Foo","member":"bar","relPath":"runtime/classes/Foo.md","anchor":"bar","text":"# Foo.bar (method)\n\nDoes bar. Also contains --weird marker.\n"}
+{"id":"1.0.0/runtime/class/Foo#bar","version":"1.0.0","stage":"runtime","kind":"class_method","name":"Foo","member":"bar","relPath":"runtime/classes/Foo.md","anchor":"bar","call":"foo.bar()","takes_table":false,"table_optional":false,"text":"# Foo.bar (method)\n\nDoes bar. Also contains --weird marker.\n"}
 {"id":"1.0.0/runtime/class/Foo#baz","version":"1.0.0","stage":"runtime","kind":"class_method","name":"Foo","member":"baz","relPath":"runtime/classes/Foo.md","anchor":"baz","text":"# Foo.baz (method)\n\nBaz.\n"}

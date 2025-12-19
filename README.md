@@ -17,6 +17,7 @@ Commands:
 - Generate for a channel + newest 5: `mise run generate-last5 -- stable` (or `latest`)
 - Generate stable + latest + newest 5 (deduped) and build the browsable site: `mise run generate-all`
 - Smoke checks (cached inputs + bun test snapshots): `FACTORIO_SMOKE_VERSION=2.0.72 mise run smoke-update`, then `FACTORIO_SMOKE_VERSION=2.0.72 mise run smoke`
+- Query generated docs locally: `mise run docs -- search "LuaSurface.set_tiles"` / `mise run docs -- call "runtime:method:LuaSurface.set_tiles"`
 
 Generated output:
 
@@ -45,6 +46,7 @@ Each line in `llm-docs/<version>/chunks.jsonl` is a JSON object with:
 
 - Required: `id` (string), `version` (string), `stage` (runtime|prototype|auxiliary), `kind` (string), `name` (string), `text` (string)
 - Optional: `member` (string), `relPath` (string, relative to `llm-docs/<version>/`), `anchor` (string)
+- Optional (call metadata): `call` (string), `takes_table` (boolean), `table_optional` (boolean)
 
 Notes:
 

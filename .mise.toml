@@ -46,4 +46,6 @@ run = "rm -rf .work/factorio-api-input/${1:-${FACTORIO_SMOKE_VERSION:-2.0.72}}/.
 # - `mise run docs -- search "LuaEntity" --version 2.0.72`
 # - `mise run docs -- get "<chunkId>" --version 2.0.72`
 # - `mise run docs -- open "runtime/classes/LuaEntity.md" --version 2.0.72`
+# - `mise run docs -- call "runtime:method:LuaSurface.set_tiles" --version 2.0.72`
+# - `mise run docs -- open "runtime:method:LuaSurface.set_tiles" --call --version 2.0.72`
 run = "bun tools/search.ts"
